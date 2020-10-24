@@ -15,7 +15,7 @@
 #define BLACK_DARK 4
 //table size
 #define TABLEROW 8
-#define TABLECOL 8+1
+#define TABLECOL 8
 
 
 int screenRow, screenCol;   //vars to store size of screen to use for formatting
@@ -26,7 +26,9 @@ void printTable(char[TABLEROW][TABLECOL]);
 
 int main(int argc, char *argv[]) {
 
+    //ncurses setup
     initscr();                              //initialize ncurses screen
+    //TODO: allow for screen size adjustments
     getmaxyx(stdscr, screenRow, screenCol); //set screen size vars, metmaxyx is a macro not a function so pointers are not used
     cbreak();                               //disable buffer for input, use raw() instead if wanting to change control char behaviors like ctrl z or ctrl c
     noecho();                               //disable normal input echo, can be done manually as needed
@@ -38,18 +40,20 @@ int main(int argc, char *argv[]) {
     init_pair(BLACK_LIGHT, COLOR_BLACK,COLOR_WHITE);
     init_pair(BLACK_DARK, COLOR_BLACK,COLOR_GREEN);
 
-    //lowercase is black, uppercase is white
-    char table[TABLEROW][TABLECOL] = {{'r','n','b','q','k','b','n','r','\0'},
-                        {'p','p','p','p','p','p','p','p','\0'},
-                        {' ',' ',' ',' ',' ',' ',' ',' ','\0'},
-                        {' ',' ',' ',' ',' ',' ',' ',' ','\0'},
-                        {' ',' ',' ',' ',' ',' ',' ',' ','\0'},
-                        {' ',' ',' ',' ',' ',' ',' ',' ','\0'},
-                        {'P','P','P','P','P','P','P','P','\0'},
-                        {'R','N','B','Q','K','B','N','R','\0'}};
-
-
+    //initialize chess board. lowercase is black, uppercase is white
+    char table[TABLEROW][TABLECOL] = {"rnbqkbnr",
+                                      "pppppppp",
+                                      "        ",
+                                      "        ",
+                                      "        ",
+                                      "        ",
+                                      "PPPPPPPP",
+                                      "RNBQKBNR"};
     printTable(table);
+
+
+
+
     printw("Press any key to exit program.\n");
     refresh();
     getch();    //wait for user to enter a char
@@ -67,33 +71,36 @@ void printTable(char table1[TABLEROW][TABLECOL]) {
         for (int j = 0; j < TABLECOL+1; j++){
 
             //print vertical numbers
-            if(j==0) mvprintw((screenRow-TABLEROW)/2+i, (screenCol-TABLECOL)/2+j, "%d", TABLEROW-i);
+            if(j==0) {
+                mvprintw((screenRow-TABLEROW)/2+i, (screenCol-TABLECOL)/2, "%d", TABLEROW-i);
 
-            //print light squares
-            else if((i+j)%2!=0) {
+            }else {
 
-                //print light squares with white pieces
-                if(isupper(table1[i][j-1])) attron(COLOR_PAIR(WHITE_LIGHT));
-                //print light squares with black pieces
-                else attron(COLOR_PAIR(BLACK_LIGHT));
+                //print light squares
+                if((i+j)%2!=0) {
 
-            //print dark squares
-            } else {
-                //print light squares with white pieces
-                if(isupper(table1[i][j-1])) attron(COLOR_PAIR(WHITE_DARK));
-                //print light squares with black pieces
-                else attron(COLOR_PAIR(BLACK_DARK));
+                    //print light squares with white pieces
+                    if(isupper(table1[i][j-1])) attron(COLOR_PAIR(WHITE_LIGHT));
+                    //print light squares with black pieces
+                    else attron(COLOR_PAIR(BLACK_LIGHT));
+
+                //print dark squares
+                } else {
+                    //print light squares with white pieces
+                    if(isupper(table1[i][j-1])) attron(COLOR_PAIR(WHITE_DARK));
+                    //print light squares with black pieces
+                    else attron(COLOR_PAIR(BLACK_DARK));
+                }
+
+                //print pieces
+                mvprintw((screenRow-TABLEROW)/2+i, (screenCol-TABLECOL)/2+j, "%c", toupper(table1[i][j-1]));
             }
-
-            //print pieces
-            mvprintw((screenRow-TABLEROW)/2+i, (screenCol-TABLECOL)/2+j, "%c", toupper(table1[i][j-1]));
         }
-
-        //mvprintw((screenRow-TABLEROW)/2+i, (screenCol-TABLECOL)/2, "%d%s\n", TABLEROW-i, table1[i]);
-
     }
+
+    //set attributes to normal
     standend();
-    //print horizontal numbers
+    //print horizontal letters
     mvprintw((screenRow-TABLEROW)/2+TABLEROW, (screenCol-TABLECOL)/2, " abcdefgh\n");
     refresh(); //update screen with new text
 }
