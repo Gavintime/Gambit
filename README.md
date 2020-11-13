@@ -1,7 +1,6 @@
 # Gambit
-A terminal based chess game under the MIT License.
-This program requires ncurses.
+A chess game under the MIT License.
 
-To build make sure you have clang installed then run
+To run this program run the command:
 
-```clang -g gambit.c -o" ./out/gambit -lform -lncurses```
+```python3 Gambit.py```
