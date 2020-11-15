@@ -121,7 +121,7 @@ def move_tokenizer(move):
     else:  return False
 
 
-# create starting position chess board
+# create starting position chess board (flipped vertically)
 start_board = [list("RNBQKBNR"),
                list("PPPPPPPP"),
                list("        "),
@@ -139,5 +139,5 @@ start_position = ChessPosition(start_board, True, True, True, True, True)
 # get move from user and print board
 current_move = input("Enter your move: ")
 print(move_tokenizer(current_move))
-print(start_position.get_knight_moves())
+print(start_position.get_legal_moves())
 print_board(start_position._board)

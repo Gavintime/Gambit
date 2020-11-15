@@ -15,7 +15,7 @@ rule system
     pawns can move 1 square forward or 2 squares if it is there first move
         pawns can only capture diagonally 1 square
         pawns must promote to a queen, knight, rook, or bishop once reaching the end of the board
-        if a pawn moves forward 2 squares and become adjacent to the enemies pawn, the enemy pawn can en passant by capturing the pawn and placing itself behind the pawn location, this must be done imediately after the pawn moves forward 2 squares
+        if a pawn moves forward 2 squares and become adjacent to the enemies pawn, the enemy pawn can en passant by capturing the pawn and placing itself behind the pawn location, this must be done immediately after the pawn moves forward 2 squares
     a draw occurs if
         a player has no legal moves to play but the king is not in check (stalemate)
         the combinations of pieces on the board makes it impossible for either player to checkmate
