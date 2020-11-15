@@ -1,6 +1,9 @@
 Allow custom board sizes and piece layouts/positions
 Improve board visualization
 Implement logic to check for legal moves and end of game conditions
-Add ability to move pieces using algebraic notation, curser, or mouse input
+Add ability to make moves using algebraic notation
 Add make file
 Allow saving/loading the history/position of a game
+add gui (tk)
+implemention rule system
+    see Rules_of_Chess

@@ -2,13 +2,13 @@ from ChessPosition import ChessPosition
 
 
 def print_board(board):
-    for rank in board:
+    for rank in reversed(board):
         print(*rank, sep = "")
 
 
-# return false if move is not valid (does not check for legality)
+# return false if move is not a valid move (does not check for legality)
 # return tokenized list of move if valid
-def move_parser(move):
+def move_tokenizer(move):
 
     # verify string has minimum size
     if len(move) < 2: return False
@@ -82,7 +82,8 @@ def move_parser(move):
     else:
 
         # named piece moves
-        if tokens[0] in ["QUEEN", "KNIGHT", "ROOK"]:
+        # must check for bishop because of pawn promotion to bishop...
+        if tokens[0] in ["QUEEN", "KNIGHT", "ROOK", "BISHOP"]:
             if move[move_spot] in "abcdefgh" and move[move_spot + 1] in "xabcdefgh":
                 tokens.append(move[move_spot].upper() + "_FILE")
                 move_spot += 1
@@ -121,14 +122,14 @@ def move_parser(move):
 
 
 # create starting position chess board
-start_board = [list("rnbqkbnr"),
-               list("pppppppp"),
-               list("        "),
-               list("        "),
-               list("        "),
-               list("        "),
+start_board = [list("RNBQKBNR"),
                list("PPPPPPPP"),
-               list("RNBQKBNR")]
+               list("        "),
+               list("        "),
+               list("        "),
+               list("        "),
+               list("pppppppp"),
+               list("rnbqkbnr")]
 
 
 
@@ -137,5 +138,6 @@ start_position = ChessPosition(start_board, True, True, True, True, True)
 
 # get move from user and print board
 current_move = input("Enter your move: ")
-print(move_parser(current_move))
+print(move_tokenizer(current_move))
+print(start_position.get_knight_moves())
 print_board(start_position._board)
