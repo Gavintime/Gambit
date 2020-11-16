@@ -1,4 +1,4 @@
 # vscode and cache
 .vscode/
-__pycache__/*
+__pycache__/
 moveFSA.drawio
