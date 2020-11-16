@@ -166,10 +166,23 @@ class ChessPosition:
         # error if never found the king
         raise Exception()
 
-
+    # TODO: check fo en passant
     def _get_pawn_moves(self):
-        pawn_moves = []
-        return pawn_moves
+
+        for y in range(0,8):        #rank
+            for x in range(0,8):    #file
+                if self._side_to_move and self._board[y][x] == 'P':
+
+                    # non capture moves
+                    if y < 7 and self._board[y + 1][x] == ' ':
+                        # normal move forward
+                        self._move_list.append((x,y + 1, "PAWN"))
+                        # double first move
+                        if y == 1 and self._board[y + 2][x] == ' ': self._move_list.append((x,y + 2, "PAWN"))
+
+                    # capture moves
+                    if y < 7 and x > 0 and self._board[y + 1][x - 1].islower(): self._move_list.append((x - 1,y + 1, "PAWN"))
+                    if y < 7 and x < 7 and self._board[y + 1][x + 1].islower(): self._move_list.append((x + 1,y + 1, "PAWN"))
 
 
     #generate list of legal moves for the current board position
@@ -183,7 +196,7 @@ class ChessPosition:
         self._get_knight_moves()
         self._get_rook_moves()
         self._get_king_moves()
-        # self._get_pawn_moves()
+        self._get_pawn_moves()
         # self._get_queen_moves()
 
 
