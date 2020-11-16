@@ -28,12 +28,28 @@ class ChessPosition:
         self._black_queen_castle = black_queen_castle
         self._black_king_castle = black_king_castle
 
+        #internal untokenized move list
+        self._move_list = []
+
+
+    # helper method to add move to movelist if not a friendly square
+    # returns true if to continue searching, false otherwise
+    def _add_move(self, piece, f, r):
+        # empty square, add move and keep searching
+        if self._board[r][f] == ' ':
+            self._move_list.append((f,r,piece))
+            return True
+        # friendly piece, end search
+        elif self._board[r][f].isupper(): return False
+        # enemy piece, add move and end search
+        elif self._board[r][f].islower():
+            self._move_list.append((f,r,piece))
+            return False
+
 
     # generate list of moves for knights of the current player, does not check for capture or friendly pawns
     # only verifies move locations are on the board
-    def get_knight_moves(self):
-
-        knight_moves = []
+    def _get_knight_moves(self):
 
         for y in range(0,8):        #rank
             for x in range(0,8):    #file
@@ -52,154 +68,78 @@ class ChessPosition:
                     # create move using target if not out of bound and not attacking friendly piece
                     for target in target_list:
                         if target[0] in range(0,8) and target[1] in range(0,8) and not self._board[target[1]][target[0]].isupper():
-                            knight_moves.append((target[0], target[1], "KNIGHT"))
-
-        return knight_moves
+                            self._move_list.append((target[0], target[1], "KNIGHT"))
 
 
-    def get_bishop_moves(self):
-        bishop_moves = []
-
+    def _get_bishop_moves(self):
 
         for y in range(0,8):        #rank
             for x in range(0,8):    #file
                 if self._side_to_move and self._board[y][x] == 'B':
 
-                    # find northeast moves
+                    # northeast moves
                     for i in range(x+1, 8):
+                        j = y + i - x
                         # skip if on board edge
-                        if i > 7 or y + i - x > 7: break
-                        # empty square, add move and keep searching
-                        elif self._board[y + i - x][i] == ' ':
-                            bishop_moves.append((i,y + i - x,"BISHOP"))
-                        # friendly piece, end search
-                        elif self._board[y + i - x][i].isupper(): break
-                        # enemy piece, add move and end search
-                        elif self._board[y + i - x][i].islower():
-                            bishop_moves.append((i,y + i - x,"BISHOP"))
-                            break
+                        if i > 7 or j > 7: break
+                        # add move to list if legal, end search if applicable
+                        elif not self._add_move("BISHOP", i, j): break
 
-                    # find southeast moves
+                    # southeast moves
                     for i in range(x+1, 8):
-                        # skip if on board edge
-                        if i > 7 or y - i + x < 0 : break
-                        # empty square, add move and keep searching
-                        elif self._board[y - i + x][i] == ' ':
-                            bishop_moves.append((i,y - i + x,"BISHOP"))
-                        # friendly piece, end search
-                        elif self._board[y - i + x][i].isupper(): break
-                        # enemy piece, add move and end search
-                        elif self._board[y - i + x][i].islower():
-                            bishop_moves.append((i,y - i + x,"BISHOP"))
-                            break
+                        j = y - i + x
+                        if i > 7 or j < 0 : break
+                        elif not self._add_move("BISHOP", i, j): break
 
-                    # find northwest moves
+                    # northwest moves
                     for i in range(x-1, -1, -1):
-                        # skip if on board edge
-                        if i < 0 or y + x - i > 7: break
-                        # empty square, add move and keep searching
-                        elif self._board[y + x - i][i] == ' ':
-                            bishop_moves.append((i,y + x - i,"BISHOP"))
-                        # friendly piece, end search
-                        elif self._board[y + x - i][i].isupper(): break
-                        # enemy piece, add move and end search
-                        elif self._board[y + x - i][i].islower():
-                            bishop_moves.append((i,y + x - i,"BISHOP"))
-                            break
+                        j = y + x - i
+                        if i < 0 or j > 7: break
+                        elif not self._add_move("BISHOP", i, j): break
 
-                    # find southwest moves
+                    # southwest moves
                     for i in range(x-1, -1, -1):
-                        # skip if on board edge
-                        if i < 0 or y - x + i < 0: break
-                        # empty square, add move and keep searching
-                        elif self._board[y - x + i][i] == ' ':
-                            bishop_moves.append((i,y - x + i,"BISHOP"))
-                        # friendly piece, end search
-                        elif self._board[y - x + i][i].isupper(): break
-                        # enemy piece, add move and end search
-                        elif self._board[y - x + i][i].islower():
-                            bishop_moves.append((i,y - x + i,"BISHOP"))
-                            break
-
-        return bishop_moves
+                        j = y - x + i
+                        if i < 0 or j < 0: break
+                        elif not self._add_move("BISHOP", i, j): break
 
 
-    def get_rook_moves(self):
-        rook_moves = []
+    def _get_rook_moves(self):
 
         for y in range(0,8):        #rank
             for x in range(0,8):    #file
                 if self._side_to_move and self._board[y][x] == 'R':
 
-                    # find valid north moves
+                    # north moves
                     for i in range(y+1, 8):
                         # skip if on edge of board
                         if i > 7: break
-                        # empty square, add move and keep searching
-                        elif self._board[i][x] == ' ':
-                            rook_moves.append((x,i,"ROOK"))
-                        # friendly piece, end search
-                        elif self._board[i][x].isupper(): break
-                        # enemy piece, add move and end search
-                        elif self._board[i][x].islower():
-                            rook_moves.append((x,i,"ROOK"))
-                            break
+                        # add move to list if legal, end search if applicable
+                        elif not self._add_move("ROOK", x, i): break
 
-                    # find valid south moves
+                    # south moves
                     for i in range(y-1, -1, -1):
-                        # skip if on edge of board
-                        if i < 0:
-                            break
-                        # empty square, add move and keep searching
-                        elif self._board[i][x] == ' ':
-                            rook_moves.append((x,i,"ROOK"))
-                        # friendly piece, end search
-                        elif self._board[i][x].isupper(): break
-                        # enemy piece, add move and end search
-                        elif self._board[i][x].islower():
-                            rook_moves.append((x,i,"ROOK"))
-                            break
-
-                    # find valid east moves
-                    for i in range(x+1, 8):
-                        # skip if on edge of board
-                        if i > 7: break
-                        # empty square, add move and keep searching
-                        elif self._board[y][i] == ' ':
-                            rook_moves.append((i,y,"ROOK"))
-                        # friendly piece, end search
-                        elif self._board[y][i].isupper(): break
-                        # enemy piece, add move and end search
-                        elif self._board[y][i].islower():
-                            rook_moves.append((i,y,"ROOK"))
-                            break
-
-                    # find valid west moves
-                    for i in range(x-1, -1,-1):
-                        # skip if on edge of board
                         if i < 0: break
-                        # empty square, add move and keep searching
-                        elif self._board[y][i] == ' ':
-                            rook_moves.append((i,y,"ROOK"))
-                        # friendly piece, end search
-                        elif self._board[y][i].isupper(): break
-                        # enemy piece, add move and end search
-                        elif self._board[y][i].islower():
-                            rook_moves.append((i,y,"ROOK"))
-                            break
+                        elif not self._add_move("ROOK", x, i): break
 
-        return rook_moves
+                    # east moves
+                    for i in range(x+1, 8):
+                        if i > 7: break
+                        elif not self._add_move("ROOK", i, y): break
+
+                    # west moves
+                    for i in range(x-1, -1,-1):
+                        if i < 0: break
+                        elif not self._add_move("ROOK", i, y): break
 
 
-    def get_queen_moves(self):
+    def _get_queen_moves(self):
         queen_moves = []
         return queen_moves
 
 
     # does not check for castling
-    def get_king_moves(self):
-        king_moves = []
-
+    def _get_king_moves(self):
 
         for y in range(0,8):        #rank
             for x in range(0,8):    #file
@@ -218,16 +158,16 @@ class ChessPosition:
                     # create move using target if not out of bound and not attacking friendly piece
                     for target in target_list:
                         if target[0] in range(0,8) and target[1] in range(0,8) and not self._board[target[1]][target[0]].isupper():
-                            king_moves.append([target[0], target[1], "KING"])
+                            self._move_list.append([target[0], target[1], "KING"])
 
                     # can end after finding first (only) king
-                    return king_moves
+                    return
 
         # error if never found the king
         raise Exception()
 
 
-    def get_pawn_moves(self):
+    def _get_pawn_moves(self):
         pawn_moves = []
         return pawn_moves
 
@@ -235,14 +175,21 @@ class ChessPosition:
     #generate list of legal moves for the current board position
     def get_legal_moves(self):
 
-        # list of moves each as its own list
-        moves = []
-        moves.extend(self.get_bishop_moves())
         tokenized_legal_moves = []
+
+        # get moves for each piece type, results are placed in self._move_list, move list is cleared first
+        self._move_list = []
+        self._get_bishop_moves()
+        self._get_knight_moves()
+        self._get_rook_moves()
+        self._get_king_moves()
+        # self._get_pawn_moves()
+        # self._get_queen_moves()
+
 
 
         # validate move then tokenize it
-        for move in moves:
+        for move in self._move_list:
 
             # TODO: CHECK FOR MOVE AMBIGUITY and putting self in check
 
