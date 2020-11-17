@@ -47,6 +47,60 @@ class ChessPosition:
             return False
 
 
+    # helper method for rook and queen to get cardinal moves
+    def _get_cardinal_moves(self, piece, f, r):
+        # north moves
+        for i in range(r+1, 8):
+            # skip if on edge of board
+            if i > 7: break
+            # add move to list if legal, end search if applicable
+            elif not self._add_move(piece, f, i): break
+
+        # south moves
+        for i in range(r-1, -1, -1):
+            if i < 0: break
+            elif not self._add_move(piece, f, i): break
+
+        # east moves
+        for i in range(f+1, 8):
+            if i > 7: break
+            elif not self._add_move(piece, i, r): break
+
+        # west moves
+        for i in range(f-1, -1,-1):
+            if i < 0: break
+            elif not self._add_move(piece, i, r): break
+
+
+    # helper method for bishop and queen to get vertical moves
+    def _get_subcardinal_moves(self, piece, f, r):
+        # northeast moves
+        for i in range(f+1, 8):
+            j = r + i - f
+            # skip if on board edge
+            if i > 7 or j > 7: break
+            # add move to list if legal, end search if applicable
+            elif not self._add_move(piece, i, j): break
+
+        # southeast moves
+        for i in range(f+1, 8):
+            j = r - i + f
+            if i > 7 or j < 0 : break
+            elif not self._add_move(piece, i, j): break
+
+        # northwest moves
+        for i in range(f-1, -1, -1):
+            j = r + f - i
+            if i < 0 or j > 7: break
+            elif not self._add_move(piece, i, j): break
+
+        # southwest moves
+        for i in range(f-1, -1, -1):
+            j = r - f + i
+            if i < 0 or j < 0: break
+            elif not self._add_move(piece, i, j): break
+
+
     # generate list of moves for knights of the current player, does not check for capture or friendly pawns
     # only verifies move locations are on the board
     def _get_knight_moves(self):
@@ -76,66 +130,23 @@ class ChessPosition:
         for y in range(0,8):        #rank
             for x in range(0,8):    #file
                 if self._side_to_move and self._board[y][x] == 'B':
-
-                    # northeast moves
-                    for i in range(x+1, 8):
-                        j = y + i - x
-                        # skip if on board edge
-                        if i > 7 or j > 7: break
-                        # add move to list if legal, end search if applicable
-                        elif not self._add_move("BISHOP", i, j): break
-
-                    # southeast moves
-                    for i in range(x+1, 8):
-                        j = y - i + x
-                        if i > 7 or j < 0 : break
-                        elif not self._add_move("BISHOP", i, j): break
-
-                    # northwest moves
-                    for i in range(x-1, -1, -1):
-                        j = y + x - i
-                        if i < 0 or j > 7: break
-                        elif not self._add_move("BISHOP", i, j): break
-
-                    # southwest moves
-                    for i in range(x-1, -1, -1):
-                        j = y - x + i
-                        if i < 0 or j < 0: break
-                        elif not self._add_move("BISHOP", i, j): break
+                    self._get_subcardinal_moves("BISHOP", x, y)
 
 
     def _get_rook_moves(self):
-
         for y in range(0,8):        #rank
             for x in range(0,8):    #file
                 if self._side_to_move and self._board[y][x] == 'R':
-
-                    # north moves
-                    for i in range(y+1, 8):
-                        # skip if on edge of board
-                        if i > 7: break
-                        # add move to list if legal, end search if applicable
-                        elif not self._add_move("ROOK", x, i): break
-
-                    # south moves
-                    for i in range(y-1, -1, -1):
-                        if i < 0: break
-                        elif not self._add_move("ROOK", x, i): break
-
-                    # east moves
-                    for i in range(x+1, 8):
-                        if i > 7: break
-                        elif not self._add_move("ROOK", i, y): break
-
-                    # west moves
-                    for i in range(x-1, -1,-1):
-                        if i < 0: break
-                        elif not self._add_move("ROOK", i, y): break
+                    self._get_cardinal_moves("ROOK", x, y)
 
 
     def _get_queen_moves(self):
-        queen_moves = []
-        return queen_moves
+
+        for y in range(0,8):        #rank
+            for x in range(0,8):    #file
+                if self._side_to_move and self._board[y][x] == 'Q':
+                    self._get_cardinal_moves("QUEEN", x, y)
+                    self._get_subcardinal_moves("QUEEN", x, y)
 
 
     # does not check for castling
@@ -197,7 +208,7 @@ class ChessPosition:
         self._get_rook_moves()
         self._get_king_moves()
         self._get_pawn_moves()
-        # self._get_queen_moves()
+        self._get_queen_moves()
 
 
 
