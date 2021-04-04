@@ -2,13 +2,13 @@ from ChessPosition import ChessPosition
 
 # reversed vertically
 start_board = [list("RNBQKBNR"),
-               list("PPpPPPPP"),
+               list("PPPPPPPP"),
                list("        "),
                list("        "),
                list("        "),
                list("        "),
-               list("ppPppppp"),
-               list("rnbqkbnr")]
+               list("pppppppp"),
+               list("rnbqkbQr")]
 
 
 # prints the given board to the console
@@ -38,18 +38,24 @@ def main():
     print("\033[2J")
     print_board(start_board)
     # create starting position
-    position = ChessPosition(start_board, False, True, True, True, True)
-    print_moves(position.get_legal_moves())
+    position = ChessPosition(start_board, True, True, True, True, True)
+    #print_moves(position.get_legal_moves())
+
+
+    while(True):
+        # get move from user
+        print("Please Enter a move: ", end='')
+        if position.move(input()): print_board(position._board)
+        else: print ("Invalid Move")
 
 
 
-    view_board_moves = position._board
-    # display avail moves as .
-    for move in position._move_list:
-        view_board_moves[move[3]][move[2]] = '.'
-    print_board(view_board_moves)
+    # view_board_moves = position._board
+    # # display avail moves as .
+    # for move in position._move_list:
+    #     view_board_moves[move[3]][move[2]] = '.'
+    # print_board(view_board_moves)
 
 
 # tells python to run main on program start
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()

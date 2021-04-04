@@ -1,3 +1,5 @@
+import re
+
 class ChessPosition:
 
     # TODO: add en passant storage, counter for repetition
@@ -34,10 +36,69 @@ class ChessPosition:
         self._move_list = []
 
 
+    # input: move as 4-5 tuple (as 0 based x y coordinates)
+    # makes the give move and updated the board/other variables as nessacariy
+    # assumes given move is legal (for external use, use move(self) function)
+    # TODO: CASTLING, PROMOTION, EN PASSANT 
+    def _make_move(self, move):
+
+
+        # move src square piece to destination square
+        # promotion move
+        if len(move) == 5: 
+            self._board[move[3]][move[2]] = move[4]
+            # promotion choice comes in lowercase, make uppercase if its whites move
+            if self._side_to_move: self._board[move[3]][move[2]] = self._board[move[3]][move[2]].upper()
+
+        # standard move (or en passant?)
+        else: self._board[move[3]][move[2]] = self._board[move[1]][move[0]]
+
+        # remove src piece from src square
+        self._board[move[1]][move[0]] = ' '
+
+
+        # disable castling rights if rook isnt on origin square (for any move)
+        # this covers the case of rook moving, and rook being captured
+        if self._board[0][0] != 'R': self._white_queen_castle = False
+        if self._board[0][7] != 'R': self._white_king_castle = False
+        if self._board[7][0] != 'r': self._black_queen_castle = False
+        if self._board[7][7] != 'r': self._black_king_castle = False
+        
+
+        # give turn to opposite side
+        self._side_to_move = not self._side_to_move
+
+
+        return
+
+    # input: uci style move as string
+    # verifys move is legal by generating legal moves and seeing if move given is in list
+    # if move is legal, _make_move(self, move) is called, which actually makes the move on the board
+    # wrapper function for _make_move(self, move)
+    # return boolean denoting if move was legal (and thus moved) or not
+    def move(self, move):
+        
+        # verify matches uci format
+        if re.fullmatch("([a-h][1-8]){2}[qrbn]?", move) != None:
+            # convert string move to tuple format move with 0 based xy coordinates
+            # first converted to list, add promotion if needed, then convert to actual tuple
+            move_tuple = [ord(move[0])-97,ord(move[1])-49,ord(move[2])-97,ord(move[3])-49]
+            if len(move) == 5: move_tuple.append(move[4])
+            move_tuple = tuple(move_tuple)
+
+            # make the move if it is a valid move
+            if move_tuple in self.get_legal_moves(): 
+                self._make_move(move_tuple)
+                return True
+
+        return False
+
+
     def get_legal_moves(self):
 
-        # empty the moves list
+        # empty the move list
         self._move_list = []
+
 
         # iterate through chess board
         for y in range(8):        #rank
@@ -46,18 +107,28 @@ class ChessPosition:
                 # check if piece
                 if self._board[y][x].isalpha():
                     # if side to move and piece ownership are the same
-                    if (self._side_to_move == self._board[y][x].isupper()):
+                    if self._side_to_move == self._board[y][x].isupper():
 
                         # call relevant method to get moves for piece at current location
                         # moves generated are returned as a list, extended to moves list
-                        self._move_list.extend({
-                            'P': self._get_pawn_moves(y,x),
-                            'N': self._get_knight_moves(y,x),
-                            'B': self._get_ray_moves(y,x),
-                            'R': self._get_ray_moves(y,x),
-                            'Q': self._get_ray_moves(y,x),
-                            'K': self._get_king_moves(y,x)
-                        }.get(self._board[y][x].upper()))
+                        # commented code was calling _get_pawn_moves for all piece types in addition to their proper function call for some strage reason
+                        # self._move_list.extend({
+                        #     'P': self._get_pawn_moves(y,x),
+                        #     'N': self._get_knight_moves(y,x),
+                        #     'B': self._get_ray_moves(y,x),
+                        #     'R': self._get_ray_moves(y,x),
+                        #     'Q': self._get_ray_moves(y,x),
+                        #     'K': self._get_king_moves(y,x)
+                        # }[self._board[y][x].upper()])
+
+                        temp_piece = self._board[y][x].upper()
+                        if temp_piece == 'P': self._move_list.extend(self._get_pawn_moves(y,x))
+                        elif temp_piece == 'N': self._move_list.extend(self._get_knight_moves(y,x))
+                        elif temp_piece == 'B': self._move_list.extend(self._get_ray_moves(y,x))
+                        elif temp_piece == 'R': self._move_list.extend(self._get_ray_moves(y,x))
+                        elif temp_piece == 'Q': self._move_list.extend(self._get_ray_moves(y,x))
+                        elif temp_piece == 'K': self._move_list.extend(self._get_king_moves(y,x))
+                        else: print("ERROR: INVALID PIECE")
 
 
         return self._move_list
@@ -87,7 +158,6 @@ class ChessPosition:
         return knight_moves
 
 
-    # TODO: finish me
     def _get_ray_moves(self, y, x):
 
         ray_moves = []
@@ -187,6 +257,26 @@ class ChessPosition:
                     king_moves.append((x,y, target[0], target[1]))
 
 
+        # castling moves
+        # TODO: CHECK IF SQUARES ARE ATTACKED/CHECKING (cannot castle if in check), move to other function?
+        # white
+        if self._side_to_move:
+            # kingside (if true then king and kingside rook havent moved)
+            if self._white_king_castle:
+                # verify squares are unoccupied and add move
+                if self._board[0][5] == ' ' and self._board[0][6] == ' ': king_moves.append((4,0,6,0))
+            # queenside
+            if self._white_queen_castle: 
+                if self._board[0][2] == ' ' and self._board[0][3] == ' ': king_moves.append((4,0,2,0))
+
+        # black
+        else:
+            if self._black_king_castle:
+                if self._board[7][5] == ' ' and self._board[7][6] == ' ': king_moves.append((4,7,6,7))
+            if self._black_queen_castle: 
+                if self._board[7][2] == ' ' and self._board[7][3] == ' ': king_moves.append((4,7,2,7))
+
+
         return king_moves
 
 
@@ -218,16 +308,16 @@ class ChessPosition:
                 if y == 6 and self._board[y - 2][x] == ' ': pawn_moves.append((x, y, x, y-2))
             # capture moves
             if x > 0 and self._board[y - 1][x - 1].isalpha() and self._board[y - 1][x - 1].isupper(): pawn_moves.append((x, y, x-1, y-1))
-            if x < 7 and self._board[y - 1][x - 1].isalpha() and self._board[y - 1][x + 1].isupper(): pawn_moves.append((x, y, x+1, y-1))
+            if x < 7 and self._board[y - 1][x + 1].isalpha() and self._board[y - 1][x + 1].isupper(): pawn_moves.append((x, y, x+1, y-1))
 
         # add promotion moves
         # TODO: optimize me?
         for i in range(0, len(pawn_moves)):
             if ((pawn_moves[i][3] == 7 and self._side_to_move) or (pawn_moves[i][3] == 0 and not self._side_to_move)) and len(pawn_moves[i]) != 5:
-                pawn_moves[i] = (pawn_moves[i][0],pawn_moves[i][1], pawn_moves[i][2], pawn_moves[i][3], 'Q')
-                pawn_moves.append((pawn_moves[i][0],pawn_moves[i][1], pawn_moves[i][2], pawn_moves[i][3], 'R'))
-                pawn_moves.append((pawn_moves[i][0],pawn_moves[i][1], pawn_moves[i][2], pawn_moves[i][3], 'B'))
-                pawn_moves.append((pawn_moves[i][0],pawn_moves[i][1], pawn_moves[i][2], pawn_moves[i][3], 'N'))
+                pawn_moves[i] = (pawn_moves[i][0],pawn_moves[i][1], pawn_moves[i][2], pawn_moves[i][3], 'q')
+                pawn_moves.append((pawn_moves[i][0],pawn_moves[i][1], pawn_moves[i][2], pawn_moves[i][3], 'r'))
+                pawn_moves.append((pawn_moves[i][0],pawn_moves[i][1], pawn_moves[i][2], pawn_moves[i][3], 'b'))
+                pawn_moves.append((pawn_moves[i][0],pawn_moves[i][1], pawn_moves[i][2], pawn_moves[i][3], 'n'))
 
 
 
