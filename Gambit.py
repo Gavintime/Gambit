@@ -1,15 +1,5 @@
 from ChessPosition import ChessPosition
 
-# reversed vertically
-start_board = [list("RNBQKBNR"),
-               list("PPPPPPPP"),
-               list("        "),
-               list("        "),
-               list("        "),
-               list("        "),
-               list("pppppppp"),
-               list("rnbqkbQr")]
-
 
 # prints the given board to the console
 def print_board(board):
@@ -28,33 +18,27 @@ def print_moves(move_list):
     for move in move_list:
         print(chr(move[0]+1 + 96), move[1]+1, chr(move[2]+1 + 96), move[3]+1, sep="", end='')
         # print promotion part
-        if len(move) == 5: print(move[4])
+        if len(move) == 5 and move[4] != 'd': print(move[4])
         else: print()
 
 
 # main function, entry point
 def main():
-    # clear screen and print starting board
+    # clear screen
     print("\033[2J")
-    print_board(start_board)
-    # create starting position
-    position = ChessPosition(start_board, True, True, True, True, True)
-    #print_moves(position.get_legal_moves())
+    # create position with default start
+    position = ChessPosition()
 
-
+    # move input loop
     while(True):
-        # get move from user
+        print_moves(position.get_legal_moves())
+        print_board(position._board)
+        print(position._ep_square)
         print("Please Enter a move: ", end='')
-        if position.move(input()): print_board(position._board)
+        move_input = input()
+        if move_input == "exit": exit()
+        elif position.move(move_input): print_board(position._board)
         else: print ("Invalid Move")
-
-
-
-    # view_board_moves = position._board
-    # # display avail moves as .
-    # for move in position._move_list:
-    #     view_board_moves[move[3]][move[2]] = '.'
-    # print_board(view_board_moves)
 
 
 # tells python to run main on program start

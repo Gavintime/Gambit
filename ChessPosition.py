@@ -1,9 +1,30 @@
 import re
 
+
+# reversed vertically
+start_board = [list("RNBQKBNR"),
+               list("PPPPPPPP"),
+               list("        "),
+               list("        "),
+               list("        "),
+               list("        "),
+               list("pppppppp"),
+               list("rnbqkbnr")]
+
+WHITE = True
+BLACK = False
+
+
 class ChessPosition:
 
-    # TODO: add en passant storage, counter for repetition
-    def __init__(self, board, side_to_move, white_queen_castle, white_king_castle, black_queen_castle, black_king_castle):
+    # TODO: counter for repetition
+    def __init__(self, board = start_board,
+                        side_to_move = WHITE,
+                        white_long_castle = True,
+                        white_short_castle = True,
+                        black_long_castle = True,
+                        black_short_castle = True,
+                        ep_square = None):
         """
             2d 8x8 list of chars representing pieces on a chess board
             K = White king
@@ -26,10 +47,15 @@ class ChessPosition:
         # booleans to store info about the board state
         # True for white to move, False for black to move
         self._side_to_move = side_to_move
-        self._white_queen_castle = white_queen_castle
-        self._white_king_castle = white_king_castle
-        self._black_queen_castle = black_queen_castle
-        self._black_king_castle = black_king_castle
+        self._white_long_castle = white_long_castle
+        self._white_short_castle = white_short_castle
+        self._black_long_castle = black_long_castle
+        self._black_short_castle = black_short_castle
+
+        # target square of any possible en passant captures
+        # None denotes no en passants
+        # otherwise, format is 0 based x,y coordinate of ep destination square as 2 tuple
+        self._ep_square = ep_square
 
         # list of valid legal moves for the current position
         # each move is stored in token form and long algebraic notation
@@ -37,47 +63,102 @@ class ChessPosition:
 
 
     # input: move as 4-5 tuple (as 0 based x y coordinates)
-    # makes the give move and updated the board/other variables as nessacariy
+    # makes the give move and updated the board/other variables as necessarily
     # assumes given move is legal (for external use, use move(self) function)
-    # TODO: CASTLING, PROMOTION, EN PASSANT 
     def _make_move(self, move):
 
 
-        # move src square piece to destination square
-        # promotion move
-        if len(move) == 5: 
-            self._board[move[3]][move[2]] = move[4]
-            # promotion choice comes in lowercase, make uppercase if its whites move
-            if self._side_to_move: self._board[move[3]][move[2]] = self._board[move[3]][move[2]].upper()
+        self._ep_square = None
 
-        # standard move (or en passant?)
-        else: self._board[move[3]][move[2]] = self._board[move[1]][move[0]]
+        # promotion (q,r,n, or b), en passant move (ep), or double first pawn move (d)
+        if len(move) == 5:
+
+            # double first pawn moves, this is needed to set ep square
+            if move[4] == 'd':
+                # move piece from src to dest
+                self._board[move[3]][move[2]] = self._board[move[1]][move[0]]
+                # set ep square to square behind the pawn
+                if self._side_to_move: self._ep_square = (move[2], move[3]-1)
+                else: self._ep_square = (move[2], move[3]+1)
+
+            # promotion
+            elif move[4] in ('q','r','n','b'):
+                self._board[move[3]][move[2]] = move[4]
+                # promotion choice comes in lowercase, make uppercase if its whites move
+                if self._side_to_move: self._board[move[3]][move[2]] = self._board[move[3]][move[2]].upper()
+
+            # en passant (or invalid move :^) )
+            else:
+                # move piece from src to dest
+                self._board[move[3]][move[2]] = self._board[move[1]][move[0]]
+                # remove captured piece (depends on what side to move)
+                if self._side_to_move: self._board[move[3]-1][move[2]] = ' '
+                else: self._board[move[3]+1][move[2]] = ' '
+
+
+
+        # standard move or castling
+        else:
+            # move piece from src to dest
+            self._board[move[3]][move[2]] = self._board[move[1]][move[0]]
+
+
+            # move rook and disable castling rights if castling move
+            # white short castle
+            if self._white_short_castle and move == (4,0,6,0):
+                self._white_short_castle = self._white_long_castle = False
+                self._board[0][7] = ' '
+                self._board[0][5] = 'R'
+
+            # black short castle
+            elif self._black_short_castle and move == (4,7,6,7):
+                self._black_short_castle = self._black_long_castle = False
+                self._board[7][7] = ' '
+                self._board[7][5] = 'r'
+
+            # white long castle
+            elif self._white_long_castle and move == (4,0,2,0):
+                self._white_short_castle = self._white_long_castle = False
+                self._board[0][0] = ' '
+                self._board[0][3] = 'R'
+
+            # black long castle
+            elif self._black_long_castle and move == (4,7,2,7):
+                self._black_short_castle = self._black_long_castle = False
+                self._board[7][0] = ' '
+                self._board[7][3] = 'r'
+
 
         # remove src piece from src square
         self._board[move[1]][move[0]] = ' '
 
 
-        # disable castling rights if rook isnt on origin square (for any move)
-        # this covers the case of rook moving, and rook being captured
-        if self._board[0][0] != 'R': self._white_queen_castle = False
-        if self._board[0][7] != 'R': self._white_king_castle = False
-        if self._board[7][0] != 'r': self._black_queen_castle = False
-        if self._board[7][7] != 'r': self._black_king_castle = False
-        
+        # CASTLING LEGALITY CHECK/UPDATE (redundant condition checks are added to beginning to prevent unnecessary grid lookups)
+        # disable castling rights if rook isn't on origin square (for any move)
+        if self._white_long_castle and self._board[0][0] != 'R': self._white_long_castle = False
+        if self._white_short_castle and self._board[0][7] != 'R': self._white_short_castle = False
+        if self._black_long_castle and self._board[7][0] != 'r': self._black_long_castle = False
+        if self._black_short_castle and self._board[7][7] != 'r': self._black_short_castle = False
+        # disable castling rights if king isn't on origin square (for any move)
+        if (self._white_long_castle or self._white_short_castle) and self._board[0][4] != "K":
+            self._white_long_castle = self._white_short_castle = False
+        if (self._black_long_castle or self._black_short_castle) and self._board[7][4] != "k":
+            self._black_long_castle = self._black_short_castle = False
+
 
         # give turn to opposite side
         self._side_to_move = not self._side_to_move
 
-
         return
 
+
     # input: uci style move as string
-    # verifys move is legal by generating legal moves and seeing if move given is in list
+    # verifies move is legal by comparing against generated list of legal moves
     # if move is legal, _make_move(self, move) is called, which actually makes the move on the board
-    # wrapper function for _make_move(self, move)
-    # return boolean denoting if move was legal (and thus moved) or not
+    # output: boolean denoting if move was legal (and thus moved) or not
+    # TODO: PROPER SOLUTION TO IGNORING "helper symbols" when comparing inputted string
     def move(self, move):
-        
+
         # verify matches uci format
         if re.fullmatch("([a-h][1-8]){2}[qrbn]?", move) != None:
             # convert string move to tuple format move with 0 based xy coordinates
@@ -86,49 +167,54 @@ class ChessPosition:
             if len(move) == 5: move_tuple.append(move[4])
             move_tuple = tuple(move_tuple)
 
+
+            # clean up legal moves to compare against
+            # remove d from double moves, and ep from en passant
+            legal_moves = self.get_legal_moves()
+            for i in range(0,len(legal_moves)):
+                if len(legal_moves[i]) == 5 and legal_moves[i][4] not in ('q','r','b','n'):
+                    legal_moves[i] = legal_moves[i][0:4]
+
+
             # make the move if it is a valid move
-            if move_tuple in self.get_legal_moves(): 
-                self._make_move(move_tuple)
+            if move_tuple in legal_moves:
+                temp_index = legal_moves.index(move_tuple)
+                self._make_move(self.get_legal_moves()[temp_index])
                 return True
 
         return False
 
 
+    # calculate all legal moves for the current game position
+    # output: list of legal moves as tuples (start x, start y, dest x, dest y) counting from 0
+    # TODO: create methods for castling (move code from king function), call methods here
     def get_legal_moves(self):
 
         # empty the move list
         self._move_list = []
 
 
-        # iterate through chess board
+        # iterate through chess board adding the moves for each piece owned by side to move
         for y in range(8):        #rank
             for x in range(8):    #file
 
-                # check if piece
-                if self._board[y][x].isalpha():
-                    # if side to move and piece ownership are the same
-                    if self._side_to_move == self._board[y][x].isupper():
+                # check if current square has a piece owned by the player to move
+                if self._board[y][x].isalpha() and self._side_to_move == self._board[y][x].isupper():
 
                         # call relevant method to get moves for piece at current location
                         # moves generated are returned as a list, extended to moves list
-                        # commented code was calling _get_pawn_moves for all piece types in addition to their proper function call for some strage reason
-                        # self._move_list.extend({
-                        #     'P': self._get_pawn_moves(y,x),
-                        #     'N': self._get_knight_moves(y,x),
-                        #     'B': self._get_ray_moves(y,x),
-                        #     'R': self._get_ray_moves(y,x),
-                        #     'Q': self._get_ray_moves(y,x),
-                        #     'K': self._get_king_moves(y,x)
-                        # }[self._board[y][x].upper()])
+                        piece_function = {
+                            'P': self._get_pawn_moves,
+                            'N': self._get_knight_moves,
+                            'B': self._get_ray_moves,
+                            'R': self._get_ray_moves,
+                            'Q': self._get_ray_moves,
+                            'K': self._get_king_moves
+                        }[self._board[y][x].upper()]
+                        self._move_list.extend(piece_function(y,x))
 
-                        temp_piece = self._board[y][x].upper()
-                        if temp_piece == 'P': self._move_list.extend(self._get_pawn_moves(y,x))
-                        elif temp_piece == 'N': self._move_list.extend(self._get_knight_moves(y,x))
-                        elif temp_piece == 'B': self._move_list.extend(self._get_ray_moves(y,x))
-                        elif temp_piece == 'R': self._move_list.extend(self._get_ray_moves(y,x))
-                        elif temp_piece == 'Q': self._move_list.extend(self._get_ray_moves(y,x))
-                        elif temp_piece == 'K': self._move_list.extend(self._get_king_moves(y,x))
-                        else: print("ERROR: INVALID PIECE")
+        # add en passant moves
+        self._move_list.extend(self._get_ep_moves())
 
 
         return self._move_list
@@ -158,6 +244,7 @@ class ChessPosition:
         return knight_moves
 
 
+    # directional moves (for bishop, rook, and queen)
     def _get_ray_moves(self, y, x):
 
         ray_moves = []
@@ -261,26 +348,25 @@ class ChessPosition:
         # TODO: CHECK IF SQUARES ARE ATTACKED/CHECKING (cannot castle if in check), move to other function?
         # white
         if self._side_to_move:
-            # kingside (if true then king and kingside rook havent moved)
-            if self._white_king_castle:
+            # kingside (if true then king and kingside rook haven't moved)
+            if self._white_short_castle:
                 # verify squares are unoccupied and add move
                 if self._board[0][5] == ' ' and self._board[0][6] == ' ': king_moves.append((4,0,6,0))
             # queenside
-            if self._white_queen_castle: 
+            if self._white_long_castle:
                 if self._board[0][2] == ' ' and self._board[0][3] == ' ': king_moves.append((4,0,2,0))
 
         # black
         else:
-            if self._black_king_castle:
+            if self._black_short_castle:
                 if self._board[7][5] == ' ' and self._board[7][6] == ' ': king_moves.append((4,7,6,7))
-            if self._black_queen_castle: 
+            if self._black_long_castle:
                 if self._board[7][2] == ' ' and self._board[7][3] == ' ': king_moves.append((4,7,2,7))
 
 
         return king_moves
 
 
-    # TODO: en passant
     def _get_pawn_moves(self, y, x):
         pawn_moves = []
 
@@ -288,11 +374,10 @@ class ChessPosition:
         if self._side_to_move:
             # non capture moves
             if self._board[y + 1][x] == ' ':
-            # normal move forward
+                # normal move forward
                 pawn_moves.append((x, y, x, y+1))
-            # double first move
-                if y == 1 and self._board[y + 2][x] == ' ': pawn_moves.append((x, y, x, y+2))
-
+                # double first move
+                if y == 1 and self._board[y + 2][x] == ' ': pawn_moves.append((x, y, x, y+2, 'd'))
             # capture moves
             if x > 0 and self._board[y + 1][x - 1].islower(): pawn_moves.append((x, y, x-1, y+1))
             if x < 7 and self._board[y + 1][x + 1].islower(): pawn_moves.append((x, y, x+1, y+1))
@@ -305,13 +390,12 @@ class ChessPosition:
                 # normal move forward
                 pawn_moves.append((x, y, x, y-1))
                 # double first move
-                if y == 6 and self._board[y - 2][x] == ' ': pawn_moves.append((x, y, x, y-2))
+                if y == 6 and self._board[y - 2][x] == ' ': pawn_moves.append((x, y, x, y-2, 'd'))
             # capture moves
             if x > 0 and self._board[y - 1][x - 1].isalpha() and self._board[y - 1][x - 1].isupper(): pawn_moves.append((x, y, x-1, y-1))
             if x < 7 and self._board[y - 1][x + 1].isalpha() and self._board[y - 1][x + 1].isupper(): pawn_moves.append((x, y, x+1, y-1))
 
         # add promotion moves
-        # TODO: optimize me?
         for i in range(0, len(pawn_moves)):
             if ((pawn_moves[i][3] == 7 and self._side_to_move) or (pawn_moves[i][3] == 0 and not self._side_to_move)) and len(pawn_moves[i]) != 5:
                 pawn_moves[i] = (pawn_moves[i][0],pawn_moves[i][1], pawn_moves[i][2], pawn_moves[i][3], 'q')
@@ -320,9 +404,38 @@ class ChessPosition:
                 pawn_moves.append((pawn_moves[i][0],pawn_moves[i][1], pawn_moves[i][2], pawn_moves[i][3], 'n'))
 
 
-
-
         return pawn_moves
+
+
+    # assumes _ep_square is valid if not None (meaning if its white to move then ep target y MUST = 5)
+    # ep target square format: 0 based xy coordinate as 2 tuple
+    def _get_ep_moves(self):
+
+        # skip if no ep target square
+        if self._ep_square is None: return []
+
+        ep_moves = []
+
+        # just to keep things looking readable
+        ep_x = self._ep_square[0]
+
+        # white ep moves
+        if self._side_to_move:
+            # check left
+            if ep_x > 0 and self._board[4][ep_x-1] == 'P':
+                ep_moves.append((ep_x-1, 4, ep_x, 5, "ep"))
+            # check right
+            if ep_x < 7 and self._board[4][ep_x+1] == 'P':
+                ep_moves.append((ep_x+1, 4, ep_x, 5, "ep"))
+
+        # black ep moves
+        else:
+            if ep_x > 0 and self._board[3][ep_x-1] == 'p':
+                ep_moves.append((ep_x-1, 3, ep_x, 2, "ep"))
+            if ep_x < 7 and self._board[3][ep_x+1] == 'p':
+                ep_moves.append((ep_x+1, 3, ep_x, 2, "ep"))
+
+        return ep_moves
 
 
     # helper method for calculating ray moves
