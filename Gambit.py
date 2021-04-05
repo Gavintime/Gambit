@@ -24,21 +24,27 @@ def print_moves(move_list):
 
 # main function, entry point
 def main():
-    # clear screen
-    print("\033[2J")
     # create position with default start
     position = ChessPosition()
 
     # move input loop
+    invalid_move = False
     while(True):
-        print_moves(position.get_legal_moves())
+        # clear screen
+        print("\033[2J")
+        #print_moves(position.get_legal_moves())
         print_board(position._board)
-        print(position._ep_square)
-        print("Please Enter a move: ", end='')
+        # print(position._ep_square)
+
+        # ask use for input
+        if invalid_move:
+            print("Invalid Move, please Enter a move: ", end='')
+            invalid_move = False
+        else: print("Please Enter a move: ", end='')
+        # receive input from user
         move_input = input()
         if move_input == "exit": exit()
-        elif position.move(move_input): print_board(position._board)
-        else: print ("Invalid Move")
+        if not position.move(move_input): invalid_move = True
 
 
 # tells python to run main on program start
