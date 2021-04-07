@@ -1,4 +1,5 @@
 import re
+import copy
 
 
 # reversed vertically
@@ -193,6 +194,24 @@ class ChessPosition:
         # empty the move list
         self._move_list = []
 
+        # generate pseudo legal moves
+        pseudo_move_list = self._get_pseudo_moves()
+
+        # add pseudo move to move list if it is a full legal move
+        # as in it doesn't put it's own king in check
+        for move in pseudo_move_list:
+            if self._legal_move_check(move): self._move_list.append(move)
+
+        # TODO: check for stalemate (no legal moves but not in check)
+        # and checkmate (no legal moves and in check)
+
+        return self._move_list
+
+
+    # generate list of pseudo legal moves (doesn't check if king goes in check)
+    def _get_pseudo_moves(self):
+
+        pseudo_moves = []
 
         # iterate through chess board adding the moves for each piece owned by side to move
         for y in range(8):        #rank
@@ -211,13 +230,12 @@ class ChessPosition:
                             'Q': self._get_ray_moves,
                             'K': self._get_king_moves
                         }[self._board[y][x].upper()]
-                        self._move_list.extend(piece_function(y,x))
+                        pseudo_moves.extend(piece_function(y,x))
 
         # add en passant moves
-        self._move_list.extend(self._get_ep_moves())
+        pseudo_moves.extend(self._get_ep_moves())
 
-
-        return self._move_list
+        return pseudo_moves
 
 
     def _get_knight_moves(self, y, x):
@@ -436,6 +454,32 @@ class ChessPosition:
                 ep_moves.append((ep_x+1, 3, ep_x, 2, "ep"))
 
         return ep_moves
+
+
+    # return boolean if the given pseudo legal move leaves the king in check
+    def _legal_move_check(self, move):
+
+        # create copy of position
+        position_copy = ChessPosition(copy.deepcopy(self._board),
+                                        self._side_to_move,
+                                        self._white_long_castle,
+                                        self._white_short_castle,
+                                        self._black_long_castle,
+                                        self._black_short_castle,
+                                        self._ep_square)
+
+        # make the proposed move on the board copy
+        position_copy._make_move(move)
+
+        # iterate through move list for opposite side after making the proposed move,
+        # if any moves captures a king then the proposed move is not legal
+        # note, for check validation, opponents pseudo legal moves are fine
+        for move in position_copy._get_pseudo_moves():
+            if position_copy._board[move[3]][move[2]].upper() == 'K':
+                return False
+
+        # return true if the move is fully legal
+        return True
 
 
     # helper method for calculating ray moves
