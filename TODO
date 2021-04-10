@@ -1,9 +1,6 @@
 Create a GUI
-Implement logic to check for legal moves and end of game conditions
-Add ability to make moves using algebraic notation
+Implement logic to check end of game conditions
+Add ability to make moves using short algebraic notation
 Add make file
 Allow saving/loading the history/position of a game
-add castling logic
-add checking logic
-add en passant logic
-add ability to make a move
+add more checking logic
