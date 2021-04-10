@@ -32,7 +32,7 @@ def main():
     while(True):
         # clear screen
         print("\033[2J")
-        #print_moves(position.get_legal_moves())
+        print_moves(position.get_legal_moves())
         print_board(position._board)
         # print(position._ep_square)
 

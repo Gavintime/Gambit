@@ -71,80 +71,83 @@ class ChessPosition:
 
         self._ep_square = None
 
-        # promotion (q,r,n, or b), en passant move (ep), or double first pawn move (d)
-        if len(move) == 5:
+        # skip all logic if its a null move
+        if move != (0,0,0,0):
 
-            # double first pawn moves, this is needed to set ep square
-            if move[4] == 'd':
-                # move piece from src to dest
-                self._board[move[3]][move[2]] = self._board[move[1]][move[0]]
-                # set ep square to square behind the pawn
-                if self._side_to_move: self._ep_square = (move[2], move[3]-1)
-                else: self._ep_square = (move[2], move[3]+1)
+            # promotion (q,r,n, or b), en passant move (ep), or double first pawn move (d)
+            if len(move) == 5:
 
-            # promotion
-            elif move[4] in ('q','r','n','b'):
-                self._board[move[3]][move[2]] = move[4]
-                # promotion choice comes in lowercase, make uppercase if its whites move
-                if self._side_to_move: self._board[move[3]][move[2]] = self._board[move[3]][move[2]].upper()
+                # double first pawn moves, this is needed to set ep square
+                if move[4] == 'd':
+                    # move piece from src to dest
+                    self._board[move[3]][move[2]] = self._board[move[1]][move[0]]
+                    # set ep square to square behind the pawn
+                    if self._side_to_move: self._ep_square = (move[2], move[3]-1)
+                    else: self._ep_square = (move[2], move[3]+1)
 
-            # en passant (or invalid move :^) )
+                # promotion
+                elif move[4] in ('q','r','n','b'):
+                    self._board[move[3]][move[2]] = move[4]
+                    # promotion choice comes in lowercase, make uppercase if its whites move
+                    if self._side_to_move: self._board[move[3]][move[2]] = self._board[move[3]][move[2]].upper()
+
+                # en passant (or invalid move :^) )
+                else:
+                    # move piece from src to dest
+                    self._board[move[3]][move[2]] = self._board[move[1]][move[0]]
+                    # remove captured piece (depends on what side to move)
+                    if self._side_to_move: self._board[move[3]-1][move[2]] = ' '
+                    else: self._board[move[3]+1][move[2]] = ' '
+
+
+
+            # standard move or castling
             else:
                 # move piece from src to dest
                 self._board[move[3]][move[2]] = self._board[move[1]][move[0]]
-                # remove captured piece (depends on what side to move)
-                if self._side_to_move: self._board[move[3]-1][move[2]] = ' '
-                else: self._board[move[3]+1][move[2]] = ' '
 
 
+                # move rook and disable castling rights if castling move
+                # white short castle
+                if self._white_short_castle and move == (4,0,6,0):
+                    self._white_short_castle = self._white_long_castle = False
+                    self._board[0][7] = ' '
+                    self._board[0][5] = 'R'
 
-        # standard move or castling
-        else:
-            # move piece from src to dest
-            self._board[move[3]][move[2]] = self._board[move[1]][move[0]]
+                # black short castle
+                elif self._black_short_castle and move == (4,7,6,7):
+                    self._black_short_castle = self._black_long_castle = False
+                    self._board[7][7] = ' '
+                    self._board[7][5] = 'r'
 
+                # white long castle
+                elif self._white_long_castle and move == (4,0,2,0):
+                    self._white_short_castle = self._white_long_castle = False
+                    self._board[0][0] = ' '
+                    self._board[0][3] = 'R'
 
-            # move rook and disable castling rights if castling move
-            # white short castle
-            if self._white_short_castle and move == (4,0,6,0):
-                self._white_short_castle = self._white_long_castle = False
-                self._board[0][7] = ' '
-                self._board[0][5] = 'R'
-
-            # black short castle
-            elif self._black_short_castle and move == (4,7,6,7):
-                self._black_short_castle = self._black_long_castle = False
-                self._board[7][7] = ' '
-                self._board[7][5] = 'r'
-
-            # white long castle
-            elif self._white_long_castle and move == (4,0,2,0):
-                self._white_short_castle = self._white_long_castle = False
-                self._board[0][0] = ' '
-                self._board[0][3] = 'R'
-
-            # black long castle
-            elif self._black_long_castle and move == (4,7,2,7):
-                self._black_short_castle = self._black_long_castle = False
-                self._board[7][0] = ' '
-                self._board[7][3] = 'r'
+                # black long castle
+                elif self._black_long_castle and move == (4,7,2,7):
+                    self._black_short_castle = self._black_long_castle = False
+                    self._board[7][0] = ' '
+                    self._board[7][3] = 'r'
 
 
-        # remove src piece from src square
-        self._board[move[1]][move[0]] = ' '
+            # remove src piece from src square
+            self._board[move[1]][move[0]] = ' '
 
 
-        # CASTLING LEGALITY CHECK/UPDATE (redundant condition checks are added to beginning to prevent unnecessary grid lookups)
-        # disable castling rights if rook isn't on origin square (for any move)
-        if self._white_long_castle and self._board[0][0] != 'R': self._white_long_castle = False
-        if self._white_short_castle and self._board[0][7] != 'R': self._white_short_castle = False
-        if self._black_long_castle and self._board[7][0] != 'r': self._black_long_castle = False
-        if self._black_short_castle and self._board[7][7] != 'r': self._black_short_castle = False
-        # disable castling rights if king isn't on origin square (for any move)
-        if (self._white_long_castle or self._white_short_castle) and self._board[0][4] != "K":
-            self._white_long_castle = self._white_short_castle = False
-        if (self._black_long_castle or self._black_short_castle) and self._board[7][4] != "k":
-            self._black_long_castle = self._black_short_castle = False
+            # CASTLING LEGALITY CHECK/UPDATE (redundant condition checks are added to beginning to prevent unnecessary grid lookups)
+            # disable castling rights if rook isn't on origin square (for any move)
+            if self._white_long_castle and self._board[0][0] != 'R': self._white_long_castle = False
+            if self._white_short_castle and self._board[0][7] != 'R': self._white_short_castle = False
+            if self._black_long_castle and self._board[7][0] != 'r': self._black_long_castle = False
+            if self._black_short_castle and self._board[7][7] != 'r': self._black_short_castle = False
+            # disable castling rights if king isn't on origin square (for any move)
+            if (self._white_long_castle or self._white_short_castle) and self._board[0][4] != "K":
+                self._white_long_castle = self._white_short_castle = False
+            if (self._black_long_castle or self._black_short_castle) and self._board[7][4] != "k":
+                self._black_long_castle = self._black_short_castle = False
 
 
         # give turn to opposite side
@@ -188,7 +191,6 @@ class ChessPosition:
 
     # calculate all legal moves for the current game position
     # output: list of legal moves as tuples (start x, start y, dest x, dest y) counting from 0
-    # TODO: create methods for castling (move code from king function), call methods here
     def get_legal_moves(self):
 
         # empty the move list
@@ -202,13 +204,22 @@ class ChessPosition:
         for move in pseudo_move_list:
             if self._legal_move_check(move): self._move_list.append(move)
 
-        # TODO: check for stalemate (no legal moves but not in check)
-        # and checkmate (no legal moves and in check)
+
+        # if there are no legal moves do stale/check mate checks
+        if not self._move_list:
+
+            # check if in check(mate) by doing a null move and seeing if opponent can capture king
+            if self._legal_move_check((0,0,0,0)):
+                # TODO: set some game state flag denoting how game ended
+                print("STALEMATE")
+            else: print("CHECKMATE: ", not self._side_to_move, " wins!")
+
 
         return self._move_list
 
 
     # generate list of pseudo legal moves (doesn't check if king goes in check)
+    # TODO: create methods for castling (move code from king function), call methods here
     def _get_pseudo_moves(self):
 
         pseudo_moves = []
@@ -456,7 +467,7 @@ class ChessPosition:
         return ep_moves
 
 
-    # return boolean if the given pseudo legal move leaves the king in check
+    # return false if the move leaves the movers king in check, true otherwise
     def _legal_move_check(self, move):
 
         # create copy of position
@@ -474,8 +485,8 @@ class ChessPosition:
         # iterate through move list for opposite side after making the proposed move,
         # if any moves captures a king then the proposed move is not legal
         # note, for check validation, opponents pseudo legal moves are fine
-        for move in position_copy._get_pseudo_moves():
-            if position_copy._board[move[3]][move[2]].upper() == 'K':
+        for test_move in position_copy._get_pseudo_moves():
+            if position_copy._board[test_move[3]][test_move[2]].upper() == 'K':
                 return False
 
         # return true if the move is fully legal
