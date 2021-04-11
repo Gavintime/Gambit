@@ -1,7 +1,7 @@
 Create a GUI
 Add ability to make moves using short algebraic notation
 Add make file
-import/export pgm
+import/export pgn
 export fen
 import fen (from file)
 auto draw for positions with insufficient material
