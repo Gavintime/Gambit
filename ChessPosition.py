@@ -18,14 +18,16 @@ BLACK = False
 
 class ChessPosition:
 
-    # TODO: counter for repetition
+    # TODO: logic for (3 move, 5 move, 50 move?, and 75 move?) repetition
     def __init__(self, board=start_board,
                  side_to_move=WHITE,
                  white_long_castle=True,
                  white_short_castle=True,
                  black_long_castle=True,
                  black_short_castle=True,
-                 ep_square=None):
+                 ep_square=None,
+                 halfmove_count=0,
+                 fullmove_count=1):
         """
             2d 8x8 list of chars representing pieces on a chess board
             K = White king
@@ -58,6 +60,18 @@ class ChessPosition:
         # format is 0 based x,y coordinate of ep dest square as tuple
         self._ep_square = ep_square
 
+        # halfmove count since last capture/pawn advance
+        # used for 50 move rule
+        # TODO: add logic to change this
+        self._halfmove_count = halfmove_count
+
+        # counter for number of full moves of the game
+        # TODO: add logic to increment this
+        self._fullmove_count = fullmove_count
+
+        # is side to move in check? is None if not calculated yet
+        self._in_check = None
+
         # list of valid legal moves for the current position
         # each move is stored in token form and long algebraic notation
         self._move_list = []
@@ -68,7 +82,9 @@ class ChessPosition:
     # assumes given move is legal (for external use, use move(self) function)
     def _make_move(self, move):
 
+        # reset internal values
         self._ep_square = None
+        self._in_check = None
 
         # skip all logic if its a null move
         if move != (0, 0, 0, 0):
@@ -215,21 +231,24 @@ class ChessPosition:
         # generate pseudo legal moves
         pseudo_move_list = self._get_pseudo_moves()
 
-        # add pseudo move to move list if it is a full legal move
+        # add castling moves
+        # this has to be done here instead of _get_pseudo_moves to prevent
+        # infinite recursion
+        pseudo_move_list.extend(self._get_castling_moves())
+
+        # add pseudo move to legal move list if it is a full legal move
         # as in it doesn't put it's own king in check
         for move in pseudo_move_list:
             if self._legal_move_check(move): self._move_list.append(move)
 
-
-        # if there are no legal moves do stale/check mate checks
+        # if there are no legal moves then it's stale/check mate
         if not self._move_list:
 
-            # check if in check(mate) by doing a null move
-            # and seeing if opponent can capture king
-            if self._legal_move_check((0, 0, 0, 0)):
+            # if in check then it's checkmate, otherwise it's stalemate
+            if self._is_in_check():
                 # TODO: set some game state flag denoting how game ended
-                print("STALEMATE")
-            else: print("CHECKMATE: ", not self._side_to_move, " wins!")
+                print("CHECKMATE: ", not self._side_to_move, " wins!")
+            else: print("STALEMATE")
 
 
         return self._move_list
@@ -265,9 +284,6 @@ class ChessPosition:
 
         # add en passant moves
         pseudo_moves.extend(self._get_ep_moves())
-
-        # add castling moves
-        pseudo_moves.extend(self._get_castle_moves())
 
         return pseudo_moves
 
@@ -342,7 +358,7 @@ class ChessPosition:
 
             # west moves
             for j in range(x - 1, -1, -1):
-                # skip if piece on h file
+                # skip if piece on a file
                 if j < 0: break
                 if not self._ray_move_helper(ray_moves, y, x, y, j): break
 
@@ -498,31 +514,45 @@ class ChessPosition:
         return ep_moves
 
 
-    def _get_castle_moves(self):
-        castle_moves = []
+    # dest square attack check is done by get_legal_moves like any other move
+    def _get_castling_moves(self):
 
-        # TODO: CHECK IF SQUARES ARE ATTACKED/(cannot castle squares attacked)
+
+        # exit if king is in check
+        if self._is_in_check(): return []
+
+        castle_moves = []
 
         # white
         if self._side_to_move:
+
             # kingside (if true then king and kingside rook haven't moved)
             if self._white_short_castle:
                 # verify squares are unoccupied and add move
                 if self._board[0][5] == ' ' and self._board[0][6] == ' ':
-                    castle_moves.append((4, 0, 6, 0))
+                    # check if 5,0 is not attacked, if safe then add move
+                    if self._is_square_safe(5, 0):
+                        castle_moves.append((4, 0, 6, 0))
+
             # queenside
             if self._white_long_castle:
-                if self._board[0][2] == ' ' and self._board[0][3] == ' ':
-                    castle_moves.append((4, 0, 2, 0))
+                if (self._board[0][1] == ' ' and self._board[0][2] == ' '
+                        and self._board[0][3] == ' '):
+                    if self._is_square_safe(3, 0):
+                        castle_moves.append((4, 0, 2, 0))
 
         # black
         else:
             if self._black_short_castle:
                 if self._board[7][5] == ' ' and self._board[7][6] == ' ':
-                    castle_moves.append((4, 7, 6, 7))
+                    if self._is_square_safe(5, 7):
+                        castle_moves.append((4, 7, 6, 7))
+
             if self._black_long_castle:
-                if self._board[7][2] == ' ' and self._board[7][3] == ' ':
-                    castle_moves.append((4, 7, 2, 7))
+                if (self._board[7][1] == ' ' and self._board[7][2] == ' '
+                        and self._board[7][3] == ' '):
+                    if self._is_square_safe(3, 7):
+                        castle_moves.append((4, 7, 2, 7))
 
         return castle_moves
 
@@ -570,3 +600,46 @@ class ChessPosition:
         # enemy piece, add move and end search
         move_list.append((x, y, f, r))
         return False
+
+
+    # return true only if square is not under attack
+    # helper method for castling
+    # square coordinate is 0 based, assumed to be in bounds
+    # TODO: cache results for 4 castling squares from previous move generation?
+    # TODO: merge this with _legal_move_check() somehow? very similar code
+    def _is_square_safe(self, sq_x, sq_y):
+
+        # create copy of position
+        position_copy = ChessPosition(copy.deepcopy(self._board),
+                                      self._side_to_move,
+                                      self._white_long_castle,
+                                      self._white_short_castle,
+                                      self._black_long_castle,
+                                      self._black_short_castle,
+                                      self._ep_square)
+
+        # make a null move
+        position_copy._make_move((0, 0, 0, 0))
+
+        # iterate through move list for opponent
+        # if any move lands on the given square, return false
+        # note: opponents pseudo legal moves are fine for this check
+        for test_move in position_copy._get_pseudo_moves():
+            if sq_x == test_move[2] and sq_y == test_move[3]:
+                return False
+
+        # return True if the square is not attacked
+        return True
+
+
+    # return true only if king for side to move is in check
+    # not to be confused with the internal cached value self._in_check
+    def _is_in_check(self):
+
+        # return cached answer if already calculated
+        if self._in_check is not None: return self._in_check
+
+        # check if king is in check then cache result
+        self._in_check = not self._legal_move_check((0, 0, 0, 0))
+
+        return self._in_check

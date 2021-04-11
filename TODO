@@ -1,6 +1,7 @@
 Create a GUI
-Implement logic to check end of game conditions
 Add ability to make moves using short algebraic notation
 Add make file
-Allow saving/loading the history/position of a game
-add more checking logic
+import/export pgm
+export fen
+import fen (from file)
+auto draw for positions with insufficient material
