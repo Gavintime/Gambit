@@ -95,11 +95,15 @@ def import_fen(fen_string):
 
 
     # iterate through fen board info
-    # ranks are reversed, the final board needs to be reverse()-ed
+    # ranks are reversed
     fen_ranks = fen_list[0].split('/')  # list of ranks as strings
     # 0 based xy coordinate of the current board square
     board_x, fen_x, y = 0, 0, 0
     while(True):
+
+        # check if rank size is correct
+        if len(fen_ranks[y]) <= fen_x: return False
+
 
         # if current index is at a piece, add it to the board
         if fen_ranks[y][fen_x].upper() in ('P', 'R', 'B', 'N', 'K', 'Q'):
@@ -222,7 +226,7 @@ def main():
 
     # create position from fen
     position = import_fen(
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq e6 0 1")
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
     if not position:
         print("Invalid FEN, exiting...")
         exit(1)
@@ -237,7 +241,7 @@ def main():
         print_board(position._board)
         print_info(position, side=True)
 
-        # special inputs
+        # special commands
         if invalid_move:
             print("Invalid Move")
             invalid_move = False
