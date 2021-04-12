@@ -18,7 +18,7 @@ BLACK = False
 
 class ChessPosition:
 
-    # TODO: logic for (3 move, 5 move, 50 move?, and 75 move?) repetition
+    # TODO: logic for 3 move, 5 move, 50 move?, and 75 move? repetition
     def __init__(self, board=start_board,
                  side_to_move=WHITE,
                  white_long_castle=True,
@@ -62,11 +62,9 @@ class ChessPosition:
 
         # halfmove count since last capture/pawn advance
         # used for 50 move rule
-        # TODO: add logic to change this
         self._halfmove_count = halfmove_count
 
         # counter for number of full moves of the game
-        # TODO: add logic to increment this
         self._fullmove_count = fullmove_count
 
         # is side to move in check? is None if not calculated yet
@@ -82,12 +80,28 @@ class ChessPosition:
     # assumes given move is legal (for external use, use move(self) function)
     def _make_move(self, move):
 
-        # reset internal values
+        # update same position values
         self._ep_square = None
         self._in_check = None
 
         # skip all logic if its a null move
         if move != (0, 0, 0, 0):
+
+            # fullmove counter, increment if this is blacks move
+            if not self._side_to_move: self._fullmove_count += 1
+
+            # halfmove counter
+            # reset if pawn advances
+            if self._board[move[1]][move[0]].upper() == 'P':
+                self._halfmove_count = 0
+
+            # reset if move is capture
+            # TODO: store if capture in move tuple
+            elif self._board[move[3]][move[2]].isalpha():
+                self._halfmove_count = 0
+
+            # increment every half move otherwise
+            else: self._halfmove_count += 1
 
             # helper variables
             dest_piece = ''
@@ -189,6 +203,8 @@ class ChessPosition:
     # verifies move is legal by comparing against generated list of legal moves
     # if move is legal, _make_move() is called, which makes move on the board
     # output: boolean denoting if move was legal (and thus moved) or not
+    # TODO: move the move format/cleaning to Gambit.py, this method should only
+    # accept a 0 based x1,y1,x2,y2 tuple and verify legality before doing it
     def move(self, move):
 
         # verify matches uci format
