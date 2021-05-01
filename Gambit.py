@@ -1,9 +1,18 @@
+"""
+TUI for Gambit Chess Program.
+
+    Functions:
+        print_board: print the given board to stdout.
+        print_moves: convert and print move list to stdout.
+        print_info: print position info to stdout.
+        import_fen: create position from fen string.
+        main: TUI Entry Point.
+"""
 from ChessPosition import ChessPosition
 
 
-# prints the given board to the console
 def print_board(board):
-
+    """Print given board with border to stdout."""
     print("╔════════╗")
 
     for y in range(7, -1, -1):
@@ -18,6 +27,7 @@ def print_board(board):
 
 
 def print_moves(move_list):
+    """Convert and print given move list to stdout."""
     for move in move_list:
         print(chr(move[0] + 1 + 96), move[1] + 1,
               chr(move[2] + 1 + 96), move[3] + 1, sep="", end='')
@@ -27,10 +37,9 @@ def print_moves(move_list):
         else: print()
 
 
-# prints ep square, castling rights, half/fullmove, side to move
 # TODO: print check status, end condition status
 def print_info(position, side=True, rights=False, ep=False, move_count=False):
-
+    """Print position info to stdout."""
     # side to move
     if side:
         if position._side_to_move: print("White to Move")
@@ -58,11 +67,10 @@ def print_info(position, side=True, rights=False, ep=False, move_count=False):
         print("Fullmove Count:", position._fullmove_count)
 
 
-# returns a chess position of the game state
-# fen_string is the uncleaned input from console or text box
 # TODO: essential checks for position legality so it plays well with program
+# TODO: move to ChessPosition class?
 def import_fen(fen_string):
-
+    """Minimally validate and create position from FEN string."""
     # remove leading/training whitespace
     fen_clean = fen_string.strip()
     # exit if incorrect number of slashes or spaces
@@ -70,7 +78,6 @@ def import_fen(fen_string):
     # split fen into list of 5+ fields (must be at least 5 because of above)
     # [board, side to move, castling, ep square, halfmove, fullmove, meta data]
     fen_list = fen_clean.split()
-
 
     # board from the fen, defaults to all blanks
     board = [list("        "),
@@ -93,7 +100,6 @@ def import_fen(fen_string):
     # fullmove count, starts at 1 and increments every time black moves
     fullmove_count = 1
 
-
     # iterate through fen board info
     # ranks are reversed
     fen_ranks = fen_list[0].split('/')  # list of ranks as strings
@@ -103,7 +109,6 @@ def import_fen(fen_string):
 
         # check if rank size is correct
         if len(fen_ranks[y]) <= fen_x: return False
-
 
         # if current index is at a piece, add it to the board
         if fen_ranks[y][fen_x].upper() in ('P', 'R', 'B', 'N', 'K', 'Q'):
@@ -121,7 +126,6 @@ def import_fen(fen_string):
 
         # not a legal board rank
         else: return False
-
 
         # end of a rank
         if board_x == 8:
@@ -145,14 +149,11 @@ def import_fen(fen_string):
     # board was entered rank revered, reverse it
     board.reverse()
 
-
-
     # board part done, grab rest of the info
     # side to move
     if fen_list[1] == 'w': side_to_move = True
     elif fen_list[1] == 'b': side_to_move = False
     else: return False
-
 
     # castling rights
     # - if none at all
@@ -186,7 +187,6 @@ def import_fen(fen_string):
             and not bs
             and not bl): return False
 
-
     # en passant square
     if fen_list[3] == '-':
         ep_square = None
@@ -199,20 +199,17 @@ def import_fen(fen_string):
     # invalid ep square value
     else: return False
 
-
     # half move count
     if fen_list[4].isdigit() and int(fen_list[4]) >= 0:
         halfmove_count = int(fen_list[4])
     # invalid half move
     else: return False
 
-
     # full move count
     if fen_list[5].isdigit() and int(fen_list[5]) >= 1:
         fullmove_count = int(fen_list[5])
     # invalid full move
     else: return False
-
 
     # anything (like meta data) after this is ignored for now
 
@@ -221,9 +218,8 @@ def import_fen(fen_string):
                          halfmove_count, fullmove_count)
 
 
-# main function, entry point
 def main():
-
+    """Entry point for Gambit TUI."""
     # create position from fen
     position = import_fen(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")

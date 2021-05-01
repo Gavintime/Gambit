@@ -1,5 +1,19 @@
+"""
+Create Chess positions and calculate moves.
+
+Classes:
+    GameState: Enum class for game states.
+    ChessPosition: Class for Chess Positions.
+
+Misc variables:
+    start_board: Default starting board of a game.
+    WHITE: constant to refer to white as True.
+    BLACK: constant to refer to black as False.
+"""
+
 import re
 import copy
+from enum import Enum
 
 
 # reversed vertically
@@ -16,7 +30,44 @@ WHITE = True
 BLACK = False
 
 
+class GameState(Enum):
+    """Enum class for a chess position's game state."""
+
+    ONGOING = 1
+    CHECKMATE = 2
+    STALEMATE = 3
+    RESIGNATION = 4
+    # insufficient material
+    # king vs king
+    # king vs king and bishop
+    # king vs king and knight
+    # kings with single same colored bishop
+    DRAW_BY_MATERIAL = 5
+    # repeated position, 3 is claim, 5 is mandatory
+    DRAW_BY_3_REPETITION = 6
+    DRAW_BY_5_REPETITION = 7
+    # number of moves without pawn advance or capture,
+    # 50 is claim, 75 is mandatory
+    # this is counted used halfmove_count
+    DRAW_BY_50_MOVE = 8
+    DRAW_BY_75_MOVE = 9
+    DRAW_BY_AGREEMENT = 10
+    # lose on time
+    FLAG_FALL = 11
+
+
 class ChessPosition:
+    """
+    Chess position with methods to calculate and enact moves.
+
+        Public Methods:
+            move(move):
+                Verifies and enacts a given move on the position
+            get_legal_moves():
+                Return list of legal moves for the current position
+            get_game_state():
+                Return game state. UNFINISHED
+    """
 
     # TODO: logic for 3 move, 5 move, 50 move?, and 75 move? repetition
     def __init__(self, board=start_board,
@@ -29,60 +80,71 @@ class ChessPosition:
                  halfmove_count=0,
                  fullmove_count=1):
         """
-            2d 8x8 list of chars representing pieces on a chess board
-            K = White king
-            Q = White queen
-            R = White rook
-            B = White bishop
-            N = White knight
-            P = White pawn
+        Create a chess position object with given position data.
 
-            k = Black king
-            q = Black queen
-            r = Black rook
-            b = Black bishop
-            n = Black knight
-            p = black pawn
-            (SPACE) = empty square
+            Paramaters:
+                board (2D Char Array): The board flipped vertically
+                side_to_move (bool): White is true, Black is False
+                white_long_castle (bool): castling legality
+                white_short_castle (bool): castling legality
+                black_long_castle (bool): castling legality
+                black_short_castle (bool): castling legality
+                ep_square (2 int tuple):
+                    0 based xy coord of eq target square, None if no eq square
+                halfmove_count (int): halfmoves since last capture/pawn move
+                fullmove_count (int): number of moves a game has lasted
+
+            Returns:
+                ChessPosition Object built from given position data
         """
+        # K = White king
+        # Q = White queen
+        # R = White rook
+        # B = White bishop
+        # N = White knight
+        # P = White pawn
+        # k = Black king
+        # q = Black queen
+        # r = Black rook
+        # b = Black bishop
+        # n = Black knight
+        # p = black pawn
+        # (SPACE) = empty square
         self._board = board
 
-        # booleans to store info about the board state
-        # True for white to move, False for black to move
         self._side_to_move = side_to_move
         self._white_long_castle = white_long_castle
         self._white_short_castle = white_short_castle
         self._black_long_castle = black_long_castle
         self._black_short_castle = black_short_castle
 
-        # target square of any possible en passant captures
-        # None denotes no en passants
-        # format is 0 based x,y coordinate of ep dest square as tuple
         self._ep_square = ep_square
 
-        # halfmove count since last capture/pawn advance
-        # used for 50 move rule
         self._halfmove_count = halfmove_count
 
-        # counter for number of full moves of the game
         self._fullmove_count = fullmove_count
 
-        # is side to move in check? is None if not calculated yet
+        # is side to move in check? None if not calculated yet
         self._in_check = None
 
         # list of valid legal moves for the current position
         # each move is stored in token form and long algebraic notation
         self._move_list = []
 
-
-    # input: move as 4-5 tuple (as 0 based x y coordinates)
-    # makes the give move and updated the board/other variables as necessarily
-    # assumes given move is legal (for external use, use move(self) function)
     def _make_move(self, move):
+        """
+        Take in an assumed legal move and enact it on the position.
 
-        # update same position values
+        Updates all Chess position variables as needed.
+
+            Paramater:
+                move (4-5 int 0-7 tuple):
+                    (x_src, y_src, x_dest, y_dest, [special_pawn_symbol])
+        """
+        # reset position specific values
         self._ep_square = None
         self._in_check = None
+        self._move_list = []
 
         # skip all logic if its a null move
         if move != (0, 0, 0, 0):
@@ -133,8 +195,6 @@ class ChessPosition:
                         self._board[move[3] - 1][move[2]] = ' '
                     else: self._board[move[3] + 1][move[2]] = ' '
 
-
-
             # standard move or castling
             else:
 
@@ -163,13 +223,11 @@ class ChessPosition:
                     self._board[7][0] = ' '
                     self._board[7][3] = 'r'
 
-
             # remove src piece from src square
             self._board[move[1]][move[0]] = ' '
 
             # assign helper variable back to array
             self._board[move[3]][move[2]] = dest_piece
-
 
             # CASTLING LEGALITY CHECK/UPDATE
             # redundant condition checks are added to prevent grid lookups
@@ -192,21 +250,24 @@ class ChessPosition:
                     and self._board[7][4] != "k"):
                 self._black_long_castle = self._black_short_castle = False
 
-
         # give turn to opposite side
         self._side_to_move = not self._side_to_move
 
         return
 
-
-    # input: uci style move as string
-    # verifies move is legal by comparing against generated list of legal moves
-    # if move is legal, _make_move() is called, which makes move on the board
-    # output: boolean denoting if move was legal (and thus moved) or not
     # TODO: move the move format/cleaning to Gambit.py, this method should only
-    # accept a 0 based x1,y1,x2,y2 tuple and verify legality before doing it
     def move(self, move):
+        """
+        Verify move is legal then enact the move on the position.
 
+        Paramater:
+            move (4-5 char tuple): long uci formatted move
+                (row_src, file_src, row_dest, file_dest, [promotion piece])
+
+        Returns:
+            Boolean denoting if move was legal (and enacted) or not.
+
+        """
         # verify matches uci format
         if re.fullmatch("([a-h][1-8]){2}[qrbn]?", move) is not None:
             # convert string move to tuple with 0 based xy coordinates
@@ -217,7 +278,6 @@ class ChessPosition:
             if len(move) == 5: move_tuple.append(move[4])
             move_tuple = tuple(move_tuple)
 
-
             # clean up legal moves to compare against
             # remove d from double moves, and ep from en passant
             legal_moves = self.get_legal_moves()
@@ -225,7 +285,6 @@ class ChessPosition:
                 if (len(legal_moves[i]) == 5
                         and legal_moves[i][4] not in ('q', 'r', 'b', 'n')):
                     legal_moves[i] = legal_moves[i][0:4]
-
 
             # make the move if it is a valid move
             if move_tuple in legal_moves:
@@ -235,14 +294,20 @@ class ChessPosition:
 
         return False
 
-
-    # calculate all legal moves for the current game position
-    # output: list of legal moves as tuples
-    # (start x, start y, dest x, dest y) counting from 0
     def get_legal_moves(self):
+        """
+        Get legal moves for the position.
 
-        # empty the move list
-        self._move_list = []
+        Use cached moves if available, if not then calculate moves.
+
+        Returns:
+            Legal Moves (list):
+                4-5 int tuples
+                (x_src, y_src, x_dest, y_dest, [promotion_symbol]) 0 based
+        """
+        # return cached move list if available
+        if self._move_list: return self._move_list
+        # otherwise generate move list
 
         # generate pseudo legal moves
         pseudo_move_list = self._get_pseudo_moves()
@@ -257,6 +322,12 @@ class ChessPosition:
         for move in pseudo_move_list:
             if self._legal_move_check(move): self._move_list.append(move)
 
+        return self._move_list
+
+    # TODO: use game_states enum, finish, be called by relevant code
+    # TODO: Write doc
+    def get_game_state(self):
+
         # if there are no legal moves then it's stale/check mate
         if not self._move_list:
 
@@ -266,13 +337,10 @@ class ChessPosition:
                 print("CHECKMATE: ", not self._side_to_move, " wins!")
             else: print("STALEMATE")
 
+        return
 
-        return self._move_list
-
-
-    # generate list of pseudo legal moves (doesn't check if king goes in check)
     def _get_pseudo_moves(self):
-
+        """Generate list of pseudo legal moves for the position."""
         pseudo_moves = []
 
         # iterate through chess board adding moves for each piece
@@ -303,9 +371,14 @@ class ChessPosition:
 
         return pseudo_moves
 
-
     def _get_knight_moves(self, y, x):
+        """
+        Get list of pseudo legal moves for knight at given coordinate.
 
+            Paramaters:
+                y (int): 0 based y coord
+                x (int): 0 based x coord
+        """
         knight_moves = []
         # y,z coords of all possible knight moves
         target_list = [(x - 2, y + 1),
@@ -333,23 +406,23 @@ class ChessPosition:
 
         return knight_moves
 
-
-    # directional moves (for bishop, rook, and queen)
     def _get_ray_moves(self, y, x):
+        """
+        Get ray style pseudo legal moves for piece at given coordinate.
 
+        Used for bishop, rook, and queen moves. Used _ray_move_helper().
+        """
         ray_moves = []
 
         # keeps track of which directions to check
         cardinal = True
         diagonal = True
 
-
         # disable diagonal for rook
         if self._board[y][x].upper() == 'R': diagonal = False
         # disable cardinal for bishop
         elif self._board[y][x].upper() == 'B': cardinal = False
         # else keep both enabled for queen
-
 
         # get cardinal moves (north east south west)
         if cardinal:
@@ -410,8 +483,14 @@ class ChessPosition:
 
         return ray_moves
 
-
     def _get_king_moves(self, y, x):
+        """
+        Get list of pseudo legal moves for king at given coordinate.
+
+            Paramaters:
+                y (int): 0 based y coord
+                x (int): 0 based x coord
+        """
         king_moves = []
 
         target_list = [(x + 1, y + 1),
@@ -439,8 +518,14 @@ class ChessPosition:
 
         return king_moves
 
-
     def _get_pawn_moves(self, y, x):
+        """
+        Get list of pseudo legal moves for pawn at given coordinate.
+
+            Paramaters:
+                y (int): 0 based y coord
+                x (int): 0 based x coord
+        """
         pawn_moves = []
 
         # white pawns
@@ -497,12 +582,13 @@ class ChessPosition:
 
         return pawn_moves
 
-
-    # assumes _ep_square is valid if not None
-    # meaning if its white to move then ep target y MUST = 5
-    # ep target square format: 0 based xy coordinate as 2 tuple
     def _get_ep_moves(self):
+        """
+        Get en passant pseudo legal moves if _ep_square is defined.
 
+        Assumes _ep_square is valid/legal.
+        Meaning if its white to move then ep target y MUST = 5, etc.
+        """
         # skip if no ep target square
         if self._ep_square is None: return []
 
@@ -529,11 +615,12 @@ class ChessPosition:
 
         return ep_moves
 
-
-    # dest square attack check is done by get_legal_moves like any other move
     def _get_castling_moves(self):
+        """
+        Get list of castling legal moves.
 
-
+        Dest square attack check is done using get_legal_moves.
+        """
         # exit if king is in check
         if self._is_in_check(): return []
 
@@ -572,10 +659,13 @@ class ChessPosition:
 
         return castle_moves
 
-
-    # return false if the move leaves the movers king in check, true otherwise
     def _legal_move_check(self, move):
+        """
+        Check if given pseudo legal move is a legal move.
 
+            Returns:
+                Bool: True if legal, False otherwise.
+        """
         # create copy of position
         position_copy = ChessPosition(copy.deepcopy(self._board),
                                       self._side_to_move,
@@ -583,7 +673,9 @@ class ChessPosition:
                                       self._white_short_castle,
                                       self._black_long_castle,
                                       self._black_short_castle,
-                                      self._ep_square)
+                                      self._ep_square,
+                                      self._halfmove_count,
+                                      self._fullmove_count)
 
         # make the proposed move on the board copy
         position_copy._make_move(move)
@@ -598,33 +690,33 @@ class ChessPosition:
         # return true if the move is fully legal
         return True
 
+    def _ray_move_helper(self, move_list, y1, x1, y2, x2):
+        """
+        Use for ray move generation.
 
-    # helper method for calculating ray moves
-    # add move to move list if applicable then returns bool if at wall
-    # y,x = src square, r,f = dest square
-    def _ray_move_helper(self, move_list, y, x, r, f):
-
-
+        Helper method for _get_ray_moves().
+        Add move to move list as needed, return False at wall, True otherwise.
+        """
         # empty square, add move and keep searching
-        if self._board[r][f] == ' ':
-            move_list.append((x, y, f, r))
+        if self._board[y2][x2] == ' ':
+            move_list.append((x1, y1, x2, y2))
             return True
 
         # friendly piece, don't add move and end search
-        if self._side_to_move == self._board[r][f].isupper(): return False
+        if self._side_to_move == self._board[y2][x2].isupper(): return False
 
         # enemy piece, add move and end search
-        move_list.append((x, y, f, r))
+        move_list.append((x1, y1, x2, y2))
         return False
 
-
-    # return true only if square is not under attack
-    # helper method for castling
-    # square coordinate is 0 based, assumed to be in bounds
     # TODO: cache results for 4 castling squares from previous move generation?
     # TODO: merge this with _legal_move_check() somehow? very similar code
     def _is_square_safe(self, sq_x, sq_y):
+        """
+        Return True if square is not under attack, False if attacked.
 
+        Helper method for castling. 0 based coords assumed to be in bounds.
+        """
         # create copy of position
         position_copy = ChessPosition(copy.deepcopy(self._board),
                                       self._side_to_move,
@@ -632,7 +724,9 @@ class ChessPosition:
                                       self._white_short_castle,
                                       self._black_long_castle,
                                       self._black_short_castle,
-                                      self._ep_square)
+                                      self._ep_square,
+                                      self._halfmove_count,
+                                      self._fullmove_count)
 
         # make a null move
         position_copy._make_move((0, 0, 0, 0))
@@ -647,11 +741,12 @@ class ChessPosition:
         # return True if the square is not attacked
         return True
 
-
-    # return true only if king for side to move is in check
-    # not to be confused with the internal cached value self._in_check
     def _is_in_check(self):
+        """
+        Return True if king is in check, False otherwise.
 
+        Uses cached result if available.
+        """
         # return cached answer if already calculated
         if self._in_check is not None: return self._in_check
 

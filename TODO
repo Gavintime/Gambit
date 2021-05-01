@@ -5,3 +5,16 @@ import/export pgn
 export fen
 import fen (from file)
 auto draw for positions with insufficient material
+
+
+How to control move generation:
+ENACT REAL MOVE
+make move
+generate legal moves
+check endgame condition
+
+
+CHECK/CASTLE SQUARE CHECK
+make move (null if for castle square)
+generate pseudo moves
+check king/square is target or not
