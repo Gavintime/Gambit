@@ -48,12 +48,11 @@ class GameState(Enum):
     DRAW_BY_5_REPETITION = 7
     # number of moves without pawn advance or capture,
     # 50 is claim, 75 is mandatory
-    # this is counted used halfmove_count
+    # this is counted using halfmove_count
     DRAW_BY_50_MOVE = 8
     DRAW_BY_75_MOVE = 9
     DRAW_BY_AGREEMENT = 10
-    # lose on time
-    FLAG_FALL = 11
+    LOSE_ON_TIME = 11
 
 
 class ChessPosition:
@@ -111,17 +110,13 @@ class ChessPosition:
         # p = black pawn
         # (SPACE) = empty square
         self._board = board
-
         self._side_to_move = side_to_move
         self._white_long_castle = white_long_castle
         self._white_short_castle = white_short_castle
         self._black_long_castle = black_long_castle
         self._black_short_castle = black_short_castle
-
         self._ep_square = ep_square
-
         self._halfmove_count = halfmove_count
-
         self._fullmove_count = fullmove_count
 
         # is side to move in check? None if not calculated yet
@@ -129,7 +124,8 @@ class ChessPosition:
 
         # list of valid legal moves for the current position
         # each move is stored in token form and long algebraic notation
-        self._move_list = []
+        # None means not calculated yet, [] means no legal moves
+        self._move_list = None
 
     def _make_move(self, move):
         """
@@ -144,7 +140,7 @@ class ChessPosition:
         # reset position specific values
         self._ep_square = None
         self._in_check = None
-        self._move_list = []
+        self._move_list = None
 
         # skip all logic if its a null move
         if move != (0, 0, 0, 0):
@@ -153,13 +149,9 @@ class ChessPosition:
             if not self._side_to_move: self._fullmove_count += 1
 
             # halfmove counter
-            # reset if pawn advances
-            if self._board[move[1]][move[0]].upper() == 'P':
-                self._halfmove_count = 0
-
-            # reset if move is capture
-            # TODO: store if capture in move tuple
-            elif self._board[move[3]][move[2]].isalpha():
+            # reset if pawn move or capture move
+            if (self._board[move[1]][move[0]].upper() == 'P'
+                    or self._board[move[3]][move[2]].isalpha()):
                 self._halfmove_count = 0
 
             # increment every half move otherwise
@@ -261,7 +253,7 @@ class ChessPosition:
         Verify move is legal then enact the move on the position.
 
         Paramater:
-            move (4-5 char tuple): long uci formatted move
+            move (4-5 char tuple): long algebraic formatted move
                 (row_src, file_src, row_dest, file_dest, [promotion piece])
 
         Returns:
@@ -298,46 +290,54 @@ class ChessPosition:
         """
         Get legal moves for the position.
 
-        Use cached moves if available, if not then calculate moves.
+        Use stored moves if available, if not then calculate moves.
 
         Returns:
             Legal Moves (list):
                 4-5 int tuples
                 (x_src, y_src, x_dest, y_dest, [promotion_symbol]) 0 based
         """
-        # return cached move list if available
-        if self._move_list: return self._move_list
-        # otherwise generate move list
+        # Generate move list if not stored
+        if self._move_list is None:
 
-        # generate pseudo legal moves
-        pseudo_move_list = self._get_pseudo_moves()
+            self._move_list = []
 
-        # add castling moves
-        # this has to be done here instead of _get_pseudo_moves to prevent
-        # infinite recursion
-        pseudo_move_list.extend(self._get_castling_moves())
+            # generate pseudo legal moves
+            pseudo_move_list = self._get_pseudo_moves()
 
-        # add pseudo move to legal move list if it is a full legal move
-        # as in it doesn't put it's own king in check
-        for move in pseudo_move_list:
-            if self._legal_move_check(move): self._move_list.append(move)
+            # add castling moves
+            # this has to be done here instead of _get_pseudo_moves to prevent
+            # infinite recursion
+            pseudo_move_list.extend(self._get_castling_moves())
+
+            # add pseudo move to legal move list if it is a full legal move
+            # as in it doesn't put it's own king in check
+            for move in pseudo_move_list:
+                if self._legal_move_check(move): self._move_list.append(move)
 
         return self._move_list
 
-    # TODO: use game_states enum, finish, be called by relevant code
-    # TODO: Write doc
+    # TODO: be called by relevant code
+    # TODO: draw by material, 3, 5
     def get_game_state(self):
+        """Get the game state of the current position."""
+        # generate move list if not done yet
+        self.get_legal_moves()
 
-        # if there are no legal moves then it's stale/check mate
+        # if no legal moves
         if not self._move_list:
+            # checkmate if in check, stalemate otherwise
+            if self._get_in_check(): return GameState.CHECKMATE
+            else: return GameState.STALEMATE
 
-            # if in check then it's checkmate, otherwise it's stalemate
-            if self._is_in_check():
-                # TODO: set some game state flag denoting how game ended
-                print("CHECKMATE: ", not self._side_to_move, " wins!")
-            else: print("STALEMATE")
+        # Forced draw by 75 move rule (1 move = 1 turn by each side)
+        # note that checkmate takes precedence
+        elif self._halfmove_count >= 150: return GameState.DRAW_BY_75_MOVE
 
-        return
+        # claimable draw by 50 move rule
+        elif self._halfmove_count >= 100: return GameState.DRAW_BY_50_MOVE
+
+        else: return GameState.ONGOING
 
     def _get_pseudo_moves(self):
         """Generate list of pseudo legal moves for the position."""
@@ -622,7 +622,7 @@ class ChessPosition:
         Dest square attack check is done using get_legal_moves.
         """
         # exit if king is in check
-        if self._is_in_check(): return []
+        if self._get_in_check(): return []
 
         castle_moves = []
 
@@ -662,6 +662,8 @@ class ChessPosition:
     def _legal_move_check(self, move):
         """
         Check if given pseudo legal move is a legal move.
+
+        A Pseudo legal move is legal iff it does not leave own king in check.
 
             Returns:
                 Bool: True if legal, False otherwise.
@@ -709,7 +711,7 @@ class ChessPosition:
         move_list.append((x1, y1, x2, y2))
         return False
 
-    # TODO: cache results for 4 castling squares from previous move generation?
+    # TODO: store results for 4 castling squares from previous move generation?
     # TODO: merge this with _legal_move_check() somehow? very similar code
     def _is_square_safe(self, sq_x, sq_y):
         """
@@ -741,16 +743,15 @@ class ChessPosition:
         # return True if the square is not attacked
         return True
 
-    def _is_in_check(self):
+    def _get_in_check(self):
         """
         Return True if king is in check, False otherwise.
 
-        Uses cached result if available.
+        Uses stored result if available.
         """
-        # return cached answer if already calculated
-        if self._in_check is not None: return self._in_check
-
-        # check if king is in check then cache result
-        self._in_check = not self._legal_move_check((0, 0, 0, 0))
+        # calculate if not stored
+        if self._in_check is None:
+            # check if king is in check then store result
+            self._in_check = not self._legal_move_check((0, 0, 0, 0))
 
         return self._in_check
