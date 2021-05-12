@@ -774,16 +774,12 @@ class ChessPosition:
 
         # black pawns
         else:
-            # non capture moves
             if self.board[loc.y - 1][loc.x] == ' ':
-                # normal move forward
                 pawn_moves.append(Move(loc.x, loc.y, loc.x, loc.y - 1, ' '))
-                # double first move
                 if loc.y == 6 and self.board[loc.y - 2][loc.x] == ' ':
                     pawn_moves.append(Move(loc.x, loc.y, loc.x, loc.y - 2,
                                            'd'))
 
-            # capture moves
             if (loc.x > 0 and self.board[loc.y - 1][loc.x - 1].isalpha()
                     and self.board[loc.y - 1][loc.x - 1].isupper()):
                 pawn_moves.append(Move(loc.x, loc.y, loc.x - 1, loc.y - 1,
@@ -795,7 +791,7 @@ class ChessPosition:
                                        ' '))
 
         # add promotion moves
-        for move in pawn_moves:
+        for i, move in enumerate(pawn_moves):
 
             # look for pawn moves landing on promotion rank
             # that haven't already been converted to promotion moves yet
@@ -804,11 +800,11 @@ class ChessPosition:
                     and move.special == ' '):
 
                 # replace original promotion move with queen promotion
-                move = Move(move.x1, move.y1, move.x2, move.y2, 'q')
+                pawn_moves[i] = Move(move.x1, move.y1, move.x2, move.y2, 'q')
 
                 # add under promotion moves
                 for p in ('r', 'b', 'n'):
-                    move.append(Move(move.x1, move.y1, move.x2, move.y2, p))
+                    pawn_moves.append(Move(move.x1, move.y1, move.x2, move.y2, p))
 
         return pawn_moves
 
