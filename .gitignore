@@ -1,4 +1,6 @@
-# vscode and cache
+# vscode ide folder
 .vscode/
+# python cache
 __pycache__/
-moveFSA.drawio
+# python venv
+.venv/

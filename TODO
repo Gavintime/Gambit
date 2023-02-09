@@ -1,9 +1,20 @@
-Allow custom board sizes and piece layouts/positions
-Improve board visualization
-Implement logic to check for legal moves and end of game conditions
-Add ability to make moves using algebraic notation
+Create a GUI
+Add ability to make moves using short algebraic notation
 Add make file
-Allow saving/loading the history/position of a game
-add gui (tk)
-implemention rule system
-    see Rules_of_Chess
+import/export pgn
+export fen
+import fen (from file)
+auto draw for positions with insufficient material
+
+
+How to control move generation:
+ENACT REAL MOVE
+make move
+generate legal moves
+check endgame condition
+
+
+CHECK/CASTLE SQUARE CHECK
+make move (null if for castle square)
+generate pseudo moves
+check king/square is target or not
